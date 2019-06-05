@@ -62,7 +62,6 @@ where
     sumList :: [Float] -> Float
     sumList lst = foldl (+) 0 lst
 
-
     -- Computes f (x_k) * cos (x_k)
     computeProduct :: (Float -> Float) -> Float -> Float -> Float -> Float
     computeProduct f n j k = 
@@ -81,18 +80,14 @@ where
                     ) [0..n]
                 ):
                 (chebCoeff f n (iter-1))
-
-    
     
     -- function to add two polynomials together
     sumVectors :: [Float] -> [Float] -> [Float]
-    sumVectors (x:xs) (y:ys) = 
-        if xs == [] then
-            (x+y):ys
-        else if ys == [] then
-            (x+y):xs
-        else
-            (x+y):(sumVectors xs ys)
+    sumVectors p1 p2 = 
+        if (length p1 >= length p2)
+        then zipWith (+) p1 (p2 ++ repeat 0)
+        else sumVectors p2 p1
+    
 
     -- takes in list of coefficients, and cheb polynomials, outputs polynomial approximation
     -- Used for c_j * T_j
@@ -117,10 +112,7 @@ where
         else
             c * x^order + polCalc coeffs x (order + 1)
     
-    printErr :: (Float -> Float) -> Float -> [Float]
-    printErr f order =
-        let soln = chebf f order in
-            map (\x -> (polCalc soln x 0) - f x ) [-1, -0.9..1]
+   
     
     -- Example functions
     f :: Float -> Float
@@ -131,18 +123,69 @@ where
     
     
     -- Newtonian approach
-    {-
-
-    findDiff :: [Float] -> Float -> Float
-    findDiff (x:xs) order = 
-        ((head xs) - x)/order
-    divDiff :: [Float] -> Float -> [[Float]]
-    divDiff (x:xs) order =
-        if xs == [] then [[x]]
-        else 
-            let lst = x:xs in
-                -- : (divDiff xs (order+1))
--}
-        
-    -- newtonCoeffs :: [[Float]] -> [Float]
     
+
+    findDiff :: Float -> Float -> Float -> Float
+    findDiff a b order = (b-a)/order
+
+    -- Given [1, 2, 4, 8], order 1 -> [1, 2, 4] 
+    divDiff :: [Float] -> Float -> [Float]
+    divDiff (x:xs) order =
+        if xs == [] then []
+        else 
+            let b = head xs in
+                (findDiff x b order):(divDiff xs order)
+
+    
+    -- Given [1, 2, 4, 8] --> [[1, 2, 4, 8], [1, 2, 4], [0.5, 1], [1/6]]
+    divDiffList :: [Float] -> Float -> [[Float]]
+    divDiffList (x:xs) order =
+       if length (x:xs) == 2 then [divDiff (x:xs) (order)]
+       else 
+            let lst = (divDiff (x:xs) order) in
+                lst:(divDiffList lst (order+1)) 
+        
+    newtonCoeffs :: [Float] -> [Float]
+    newtonCoeffs lst =
+        (head lst):(map head (divDiffList lst 1))
+
+    multiplyByX :: [Float] -> [Float]
+    multiplyByX p = 0:p
+    
+    multPoly :: [Float] -> [Float] -> [Float]
+    multPoly [] p2 = []
+    multPoly (p:p1) p2 = 
+        let pTimesP2 = map (*p) p2 in
+            let xTimesP1Timesp2 = multiplyByX (multPoly p1 p2) in
+                sumVectors pTimesP2 xTimesP1Timesp2 
+    
+    -- Generate list of polynomials to be multiplied (Newtonian form)
+    newtonPolMult :: [Float] -> [[Float]]
+    newtonPolMult nodes = 
+        map (\x -> [-1*x, 1]) nodes
+    
+    polMultFoldable :: [[Float]] -> [[Float]]
+    polMultFoldable lst = 
+        [1]:scanl1 (\x y -> multPoly x y) lst
+    
+    fn :: Float -> Float
+    fn x = log x
+
+    newtonApprox :: (Float -> Float) -> Float -> [Float]
+    newtonApprox f n =
+        let newtonNodes = [0.1,0.2..1]
+            coeffs = newtonCoeffs (map f newtonNodes)
+            pairedList = zip coeffs (polMultFoldable (newtonPolMult newtonNodes))
+            mapped = map (\(x, y) -> map (*x) y) pairedList 
+            in foldl (\x y -> sumVectors x y) [] mapped
+
+    printErrLag :: (Float -> Float) -> Float -> [Float]
+    printErrLag f order =
+        let soln = chebf f order in
+            map (\x -> (polCalc soln x 0) - f x ) [-1, -0.9..1]
+
+    printErrNew :: (Float -> Float) -> Float -> [Float]
+    printErrNew f order =
+        let soln = newtonApprox f order in
+            map (\x -> (polCalc soln x 0) - f x ) [0.1, 0.15..1]
+
