@@ -111,8 +111,7 @@ where
    
     
     -- Example functions
-    f :: Double -> Double
-    f x = cos x
+    
 
     h :: Double -> Double
     h x = sin x + exp (cos x) - x*x*x
@@ -182,4 +181,42 @@ where
     printErrNew f order =
         let soln = newtonApprox f order in
             map (\x -> (polCalc soln x 0) - f x ) [0.5, 1..2]
+
+    polPower :: [Double] -> Int -> [Double]
+    polPower f 0 = [1]
+    polPower f n = multPoly f (polPower f (n-1))
+
+    polDivCoeff :: [Double] -> [Double] -> Double
+    polDivCoeff f g = head f / head g  
+
+    polDivRemain :: [Double] -> [Double] -> Double -> [Double]
+    polDivRemain f g coeff = -- g - f
+        if length f < length g then f
+        else
+        sumVectors (map (*(-coeff)) g) f 
+
+    f :: [Double]
+    f = [2, 3, 1]
+    g :: [Double]
+    g = [1, -1]
+
+    polDiv :: [Double] -> [Double] -> ([Double], [Double], [Double])
+    -- Dividing two polynomials, f, g. Returns division + reminader (num + denom)
+    -- Note: MUST send in division as flipped polynomial ([1, 2, 3] => x^2 + 2x + 3)
+    polDiv f g = -- f / g
+        if length f < length g then ([], f, g)
+        else 
+            let coeff = polDivCoeff f g 
+                remain = polDivRemain f g coeff
+                (x, y, z) = polDiv (tail remain) g
+            in (coeff:x, y, g)
+            
+
+    -- computes pol rep for f (g (x)), given approximations f and g
+    fnComposition :: [Double] -> [Double] -> [Double]
+    fnComposition f g = 
+        let zipped = zip f [0..(length f)] 
+            composed = map (\ (x, y) -> map (*x) (polPower g y))  zipped -- x is coefficient. y is order of polynomial. we need to multiply x by exp of g
+        in foldl (\x y -> sumVectors x y) [] composed
+        
 
