@@ -25,6 +25,8 @@ executable test
                        accelerate,
                        accelerate-fft,
                        accelerate-llvm-native,
+                       diagrams-lib,
+                       diagrams-cairo,
                        Chart,
                        Chart-cairo,
                        Chart-diagrams
