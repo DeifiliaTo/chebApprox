@@ -1,7 +1,6 @@
 module ChebyshevApproximations
 where
     import Prelude
-
     -- Define data type to be able to build complex expressions
     data Expr =  Value Double | Cos Expr | Sin Expr | Tan Expr | Exp Expr | Log Expr
 
@@ -175,7 +174,7 @@ where
     printErrLag :: (Double -> Double) -> Double -> [Double]
     printErrLag f order =
         let soln = chebf f order in
-            map (\x -> (polCalc soln x 0) - f x ) [-1, -0.9..1]
+            map (\x -> (polCalc soln x 0) - f x ) [-1, -0.99..1]
 
     printErrNew :: (Double -> Double) -> Double -> [Double]
     printErrNew f order =
@@ -218,3 +217,15 @@ where
         let zipped = zip f [0..(length f)]
             composed = map (\ (x, y) -> map (*x) (polPower g y))  zipped -- x is coefficient. y is order of polynomial. we need to multiply x by exp of g
         in foldl (\x y -> sumVectors x y) [] composed
+
+    data Cheb = Cheb [Double]
+    
+    x :: Cheb
+    x = Cheb [0.0, 1.0]
+    
+    
+    
+    sinh :: Cheb -> Cheb
+    sinh x = Cheb (chebf Prelude.sinh 5)
+
+    
