@@ -1,0 +1,33 @@
+name:                chebApprox
+version:             0.1.0.0
+synopsis:            Function approximation
+homepage:            https://github.com/DeifiliaTo/chebApprox
+license:             BSD3
+license-file:        LICENSE
+author:              Deifilia To
+maintainer:          deifilia.to@gmail.com
+category:            Math
+build-type:          Simple
+extra-source-files:  README.md
+cabal-version:       >=1.10
+
+library
+  exposed-modules:     ChebyshevApproximations
+  hs-source-dirs:      src
+  build-depends:       base >=4.12 && <4.13
+  default-language:    Haskell2010
+
+executable test
+  main-is:             Test.hs
+  hs-source-dirs:      test
+  build-depends:       base >=4.12 && <4.13,
+                       chebApprox,
+                       accelerate,
+                       accelerate-fft,
+                       accelerate-llvm-native,
+                       diagrams-lib,
+                       diagrams-cairo,
+                       Chart,
+                       Chart-cairo,
+                       Chart-diagrams
+  default-language:    Haskell2010
