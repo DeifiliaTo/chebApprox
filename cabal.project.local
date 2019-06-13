@@ -1,0 +1,3 @@
+constraints: accelerate-fft +llvm-cpu,
+	     accelerate-fft -llvm-ptx,
+             llvm-hs +shared-llvm
