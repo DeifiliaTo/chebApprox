@@ -31,3 +31,5 @@ executable test
                        Chart-cairo,
                        Chart-diagrams
   default-language:    Haskell2010
+
+-- vim: nospell
