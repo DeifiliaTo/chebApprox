@@ -3,6 +3,7 @@ where
     import Prelude 
     import ChebyshevApproximations
     
+    
     data Cheb = Cheb [Double] deriving (Show)
     
     x :: Cheb
@@ -40,3 +41,8 @@ where
 
     fromCheb :: Cheb -> [Double]
     fromCheb (Cheb x) = x
+
+    instance (Num Cheb) where
+        (Cheb x) + (Cheb y) = Cheb (sumVectors x y)
+        (Cheb x) * (Cheb y) = Cheb (multPoly x y)
+    

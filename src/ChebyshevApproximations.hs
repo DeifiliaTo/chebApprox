@@ -1,30 +1,8 @@
 module ChebyshevApproximations
 where
     import Prelude
-    -- Define data type to be able to build complex expressions
-    data Expr =  Value Double | Cos Expr | Sin Expr | Tan Expr | Exp Expr | Log Expr
-
-    -- TODO: Change type to Floating (more general)
-    {-
-
-    -}
-
-    -- sin (cos (x)) = eval (Compute Sin (Compute Cos (Value x)))
-    eval :: Expr -> Double
-    eval (Value x) = x
-    eval (Cos x) = cos (eval (x))
-    eval (Sin x) = sin (eval (x))
-    eval (Tan x) = sin (eval x) / cos (eval x)
-    eval (Exp x) = exp (eval (x))
-    eval (Log x) = log (eval (x))
-
-    -- 0 : Newtonian approach
-    -- 1 : lagrangian approach
-    polConst :: Expr -> Double
-    polConst (Value x) = 0
-    polConst (Sin x) = 0
-    polConst (Log x) = 1
-
+    
+  
     -- Returns value of chebyshev zero
     computeChebNode :: (Floating a, Integral b) => b -> b -> a
     computeChebNode n k = 
@@ -190,7 +168,7 @@ where
 
     f :: [Double]
     f = [2, 3, 1]
-    g :: [Double]
+    g :: [Double]  
     g = [1, -1]
 
     polDiv :: (Floating a) => [a] -> [a] -> ([a], [a], [a])
@@ -204,7 +182,6 @@ where
                 (x, y, z) = polDiv (tail remain) g
             in (coeff:x, y, g)
 
-
     -- computes pol rep for f (g (x)), given approximations f and g
     fnComposition :: (Floating a) => [a] -> [a] -> [a]
     fnComposition f g =
@@ -212,14 +189,34 @@ where
             composed = map (\ (x, y) -> map (*x) (polPower g y))  zipped -- x is coefficient. y is order of polynomial. we need to multiply x by exp of g
         in foldl (\x y -> sumVectors x y) [] composed
 
-    data Cheb = Cheb [Double]
-    
-    x :: Cheb
-    x = Cheb [0.0, 1.0]
-    
-    
-    
-    sinh :: Cheb -> Cheb
-    sinh x = Cheb (chebf Prelude.sinh 5)
+    envelope :: (Floating a, Eq a, Ord a) => [a] -> [Int] -> [(a, Int)]
+    envelope (c:coeffs) (i:ndices) = 
+        if (coeffs) == [] then [(c, i)]
+        else 
+            let env = envelope coeffs ndices in
+                if c > (fst (head env)) then ((maximum (c:coeffs)), i):(env)
+                else env
 
     
+    tol :: (Floating a) => a
+    tol = 1e-15
+
+    toInt :: (Integral a, RealFrac a) => a -> Int
+    toInt x = round (x)
+
+    --plateau :: (Floating a, Ord a, Integral b, Fractional b) => [a] -> b -> b -> b
+    plateau :: (Floating a, Ord a) => [a] -> Int -> Int -> Int
+    plateau env j n =
+        let j2 = round ((1.25*fromIntegral(j))+5.0) in
+            if j2 <= n then
+                if ( (env!!j2)/(env!!j)) >=  (3.0*(1.0-log(env!!j)/log(tol)))
+                    then j-1
+                else
+                    plateau env (j+1) n
+            else plateau env (j+1) n
+
+    lst :: [Double]
+    lst = [1, 2, 3.0]
+    -- findIndex :: (Floating a, Eq a) => [a] -> Int
+    --findIndex coeffs =
+    --  toIntplateau (envelope coeffs [0..(length coeffs -1)]) 0 (length coeffs)
