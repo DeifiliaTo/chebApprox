@@ -205,18 +205,21 @@ where
     toInt x = round (x)
 
     --plateau :: (Floating a, Ord a, Integral b, Fractional b) => [a] -> b -> b -> b
-    plateau :: (Floating a, Ord a) => [a] -> Int -> Int -> Int
+    plateau :: (Floating a, Ord a) => [(a, Int)] -> Int -> Int -> Int
     plateau env j n =
         let j2 = round ((1.25*fromIntegral(j))+5.0) in
-            if j2 <= n then
-                if ( (env!!j2)/(env!!j)) >=  (3.0*(1.0-log(env!!j)/log(tol)))
+            if j2 <= (length (env)-1) then
+                if (fst(env!!j2)/fst(env!!j)) >=  (3.0*(1.0-log(fst (env!!j))/log(tol)))
                     then j-1
                 else
                     plateau env (j+1) n
-            else plateau env (j+1) n
+            else snd (env!!j)
 
     lst :: [Double]
-    lst = [1, 2, 3.0]
+    lst = [1, 4.0, 3.0]
+
+    extractEnv :: (Floating a) => [(a, Int)] -> [a]
+    extractEnv lst = map (\x -> fst x) lst
     -- findIndex :: (Floating a, Eq a) => [a] -> Int
     --findIndex coeffs =
     --  toIntplateau (envelope coeffs [0..(length coeffs -1)]) 0 (length coeffs)

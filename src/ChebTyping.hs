@@ -9,6 +9,18 @@ where
     x :: Cheb
     x = Cheb [0.0, 1.0]
     
+    calcCheb :: (Double -> Double) -> Cheb -> Int -> Cheb
+    calcCheb f x n =
+        let fnRep = chebf f n 
+            env = envelope (map abs fnRep) [0..length (fnRep)]
+        in
+            if (plateau env 2 (length env)) >= (length(env)-1) then
+                if n > 100 then Cheb (fnRep)
+                else
+                    calcCheb f x (n*2)
+            else
+                Cheb (fnRep)
+
     cos :: Cheb -> Cheb
     cos x = 
         let f = chebf (Prelude.cos) 10 in
