@@ -1,6 +1,6 @@
-module ChebyshevApproximations
+module ChebyshevApproximations (chebf, envelope, plateau, fnComposition, newtonApprox, sumVectors, multPoly)
 where
-    import Prelude
+    import Prelude 
     
   
     -- Returns value of chebyshev zero
@@ -208,12 +208,14 @@ where
     plateau :: (Floating a, Ord a) => [(a, Int)] -> Int -> Int -> Int
     plateau env j n =
         let j2 = round ((1.25*fromIntegral(j))+5.0) in
-            if j2 <= (length (env)-1) then
-                if (fst(env!!j2)/fst(env!!j)) >=  (3.0*(1.0-log(fst (env!!j))/log(tol)))
-                    then j-1
-                else
-                    plateau env (j+1) n
-            else snd (env!!j)
+            if length (env) < 2 then 1
+            else
+                if j2 <= (length (env)-1) then
+                    if (fst(env!!j2)/fst(env!!j)) >=  (3.0*(1.0-log(fst (env!!j))/log(tol)))
+                        then j-1
+                    else
+                        plateau env (j+1) n
+                else snd (env!!j)
 
     lst :: [Double]
     lst = [1, 4.0, 3.0]
