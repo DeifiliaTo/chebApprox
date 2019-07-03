@@ -124,5 +124,20 @@ where
             flattened = P.concat matrix
         in
             A.fromList (Z:.(n+1):.(n+1)) flattened
+
+    multiplyCoeff :: Exp Double -> Acc (Vector Double) -> Acc (Vector Double)
+    multiplyCoeff coeff vec = A.map (* coeff) vec
     
+    -- Given a function f, and degree n, calculates chebyshev approximation
+    -- Get list of coeffs and chebyshev polynomials. Want to zip each coeff w/ respective polynomial and multiply. 
+    -- Finally, fold over all polynomials
+    chebf :: (Exp Double -> Exp Double) -> Int -> Acc (Vector Double)
+    chebf f n =
+        let coeffs = chebCoeff f (constant n)
+            chebPols = genChebMatrix n
+            counter = enumFromN (lift (Z:.n)) 0
+            chebList = A.map (\x -> slice (use chebPols) (constant (Z :. (x::Int) :. All)))(counter)
+            lst = A.zip coeffs (chebList)
+            mapped = A.map (\(x, y) -> A.map (*x) y) zipped
+            in A.fold (\x y -> sumVectors x y) (constant 0) mapped
 --(c0 f nodes n)
