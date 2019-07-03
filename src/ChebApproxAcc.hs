@@ -22,6 +22,9 @@ where
     value2 :: Exp (Int)
     value2 = (constant 1)   
 
+    value3 :: Exp (Double)
+    value3 = (constant 0.02)
+
     arr1 :: Acc (Vector Double)
     arr1 = use (fromList (Z :. 10) [0..])
 
@@ -83,6 +86,12 @@ where
     
     chebCoeff :: (Exp Double -> Exp Double) -> Exp Int -> Acc (Vector Double)
     chebCoeff f n =
-        let nodes = chebNodes n in
-            A.scanl (\x -> cj f nodes n x) (c0 f nodes n) nodes -- doesn't work yet! need to figure out how to scan across array.
+        let nodes = chebNodes n 
+            enumeration = enumFromN (lift (Z:.n)) 0
+        in --nodes :: Acc (Vector Double)
+        --( unit((c0 f nodes n))) A.++ (A.map (\x -> cj f nodes n x)  enumeration) -- doesn't work yet! need to figure out how to scan across array.
+        (A.map (\x -> cj f nodes n x) enumeration)
+    
+    
 
+--(c0 f nodes n)
