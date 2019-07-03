@@ -92,6 +92,35 @@ where
         --( unit((c0 f nodes n))) A.++ (A.map (\x -> cj f nodes n x)  enumeration) -- doesn't work yet! need to figure out how to scan across array.
         (A.map (\x -> cj f nodes n x) enumeration)
     
-    
 
+    -- Takes in an order. Returns list of chebyshev polynomials
+    chebPol :: Int -> [[Double]]
+    chebPol 0 = [[1.0]]
+    chebPol 1 = [[0.0, 1.0], [1.0]]
+    chebPol n =
+        let prevResult = chebPol (n-1) in
+        let multTwo = P.map (\x -> P.map (*2.0) x) prevResult in
+            let firstTerm = P.map (\x -> 0:x) multTwo in
+                let subtractTerm = sumVectorsL (P.head (firstTerm)) ((P.map (*(-1)) (P.head (P.tail prevResult)))) in
+                    subtractTerm:(prevResult)
+
+    padList :: [Double] -> Int -> [Double]
+    padList lst n = 
+        let extraDigits = n - P.length lst
+        in
+            if extraDigits P.<= 0 then lst
+            else lst P.++(P.replicate extraDigits 0)
+
+    --genMatrix :: (Shape sh, Elt e) => Array sh e
+    genMatrix :: Matrix Int
+    genMatrix = A.fromList (Z:.3:.3) [0, 1, 2, 3, 3 , 2, 2, 5, 2]
+        --A.fromList :: (Shape sh, Elt e) => sh -> [e] -> Array sh e
+
+
+    sumVectorsL :: [Double] -> [Double] -> [Double]
+    sumVectorsL p1 p2 =
+        if (P.length p1 P.>= P.length p2)
+        then P.zipWith (+) p1 (p2 P.++ P.repeat 0)
+        else sumVectorsL p2 p1
+    
 --(c0 f nodes n)
