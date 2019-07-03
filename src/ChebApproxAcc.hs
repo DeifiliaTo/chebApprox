@@ -111,16 +111,18 @@ where
             if extraDigits P.<= 0 then lst
             else lst P.++(P.replicate extraDigits 0)
 
-    --genMatrix :: (Shape sh, Elt e) => Array sh e
-    genMatrix :: Matrix Int
-    genMatrix = A.fromList (Z:.3:.3) [0, 1, 2, 3, 3 , 2, 2, 5, 2]
-        --A.fromList :: (Shape sh, Elt e) => sh -> [e] -> Array sh e
-
-
     sumVectorsL :: [Double] -> [Double] -> [Double]
     sumVectorsL p1 p2 =
         if (P.length p1 P.>= P.length p2)
         then P.zipWith (+) p1 (p2 P.++ P.repeat 0)
         else sumVectorsL p2 p1
+
+    genChebMatrix :: Int -> Matrix Double
+    genChebMatrix n = 
+        let chebPolynomials = chebPol n 
+            matrix = P.map (\x -> padList x (n+1)) chebPolynomials
+            flattened = P.concat matrix
+        in
+            A.fromList (Z:.(n+1):.(n+1)) flattened
     
 --(c0 f nodes n)
