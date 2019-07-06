@@ -42,7 +42,7 @@ where
      -- Creates list of chebyshev zeros
     chebNodes :: Exp Int -> Acc (Vector Double)
     chebNodes n =
-         let nodes = enumFromN (lift (Z:.n)) 0 in
+         let nodes = enumFromN (lift (Z:.(n+1))) 0 in
             A.map (\x -> computeChebNode (n) x) (nodes) 
   
     zipWithPad :: (A.Num a, A.Num b, Elt c) => (Exp a -> Exp b -> Exp c) -> 
@@ -58,64 +58,61 @@ where
     
      -- function to add two polynomials together
     sumVectors :: Acc (Vector Double) -> Acc (Vector Double) -> Acc (Vector Double)
-    sumVectors p1 p2 =
-        zipWithPad (+) p1 p2
-
-    sumList :: Acc (Vector Double) -> Acc (Scalar Double)
-    sumList lst = A.fold (+) 0 lst
+    sumVectors p1 p2 = zipWithPad (+) p1 p2
 
     f :: Exp Double -> Exp Double
     f x = 2+x/(cos x)
 
      -- Computes f (x_k) * cos (x_k)
-    computeProduct ::  (Exp Double -> Exp Double) -> Exp Int -> Exp Int -> Exp Int -> Exp Double
-    computeProduct f n j k =
-        f ((2*A.fromIntegral(k)+1)/(2*A.fromIntegral(n)+2)*pi) * cos (A.fromIntegral (j)*(2*A.fromIntegral(k)+1)/(2*A.fromIntegral(n)+2)*pi)
     
-    c0 :: (Exp Double -> Exp Double) -> Acc (Vector Double) -> Exp Int -> Exp Double
-    c0 f nodes n =
-        1/(1*(A.fromIntegral(n)+1))*(the (sumList(A.map f nodes)))
+--    c0 :: (Exp Double -> Exp Double) -> Acc (Vector Double) -> Exp Int -> Exp Double
+  --  c0 f nodes n =
+    --    1/(1*(A.fromIntegral(n)+1))*(the (sumList(A.map f nodes)))
 
-    cj :: (Exp Double -> Exp Double) -> Acc (Vector Double) -> Exp Int -> Exp Int -> Exp Double
-    cj f nodes n k =
-        2.0/(A.fromIntegral(n)+1.0)*(the (sumList(
-                    A.map (\x ->
-                        f (computeChebNode n x)*cos (A.fromIntegral(k) *(2*A.fromIntegral(n)+1-2*A.fromIntegral(x))/(2*A.fromIntegral(n)+2)*pi)
-                    ) (enumFromN (lift (Z:.n)) 0)
-                )))
+    cj' :: (Exp Double -> Exp Double) -> Acc (Matrix Double) ->  Acc (Vector Double)
+    cj' f nodesM =
+        let I2 n _ = shape nodesM
+        in  A.map (\x -> 2.0 / (A.fromIntegral n + 1.0)*x )
+        $ A.sum
+        $ A.generate (shape nodesM) $ \(I2 j k) ->
+            f (computeChebNode n k)*cos (A.fromIntegral(j) *(2*A.fromIntegral(n)+1-2*A.fromIntegral(k))/(2*A.fromIntegral(n)+2)*pi)
+         --   A.fromIntegral(j)
     
-    chebCoeff :: (Exp Double -> Exp Double) -> Exp Int -> Acc (Vector Double)
-    chebCoeff f n =
-        let nodes = chebNodes n 
-            enumeration = enumFromN (lift (Z:.n)) 0
-        in --nodes :: Acc (Vector Double)
-        --( unit((c0 f nodes n))) A.++ (A.map (\x -> cj f nodes n x)  enumeration) -- doesn't work yet! need to figure out how to scan across array.
-        (A.map (\x -> cj f nodes n x) enumeration)
-    
+    chebCoeff' :: (Exp Double -> Exp Double) -> Exp Int -> Acc (Vector Double)
+    chebCoeff' f n =
+      let nodesV  = chebNodes n
+          nodesM  = A.replicate (lift (Z :. n :. All)) nodesV
+       in
+       cj' f nodesM    
 
-    -- Takes in an order. Returns list of chebyshev polynomials
+     -- Takes in an order. Returns list of chebyshev polynomials
     chebPol :: Int -> [[Double]]
     chebPol 0 = [[1.0]]
     chebPol 1 = [[0.0, 1.0], [1.0]]
     chebPol n =
-        let prevResult = chebPol (n-1) in
-        let multTwo = P.map (\x -> P.map (*2.0) x) prevResult in
-            let firstTerm = P.map (\x -> 0:x) multTwo in
-                let subtractTerm = sumVectorsL (P.head (firstTerm)) ((P.map (*(-1)) (P.head (P.tail prevResult)))) in
-                    subtractTerm:(prevResult)
+        let prevResult   = chebPol (n-1)
+            multTwo      = P.map (\x -> P.map (*2.0) x) prevResult
+            firstTerm    = P.map (\x -> 0:x) multTwo
+            subtractTerm = sumVectorsL (P.head firstTerm) (P.map P.negate (P.head (P.tail prevResult)))
+        in
+        subtractTerm : prevResult
 
     padList :: [Double] -> Int -> [Double]
     padList lst n = 
         let extraDigits = n - P.length lst
         in
-            if extraDigits P.<= 0 then lst
-            else lst P.++(P.replicate extraDigits 0)
+            if extraDigits P.<= 0 
+                then lst
+                else lst P.++(P.replicate extraDigits 0)
 
     sumVectorsL :: [Double] -> [Double] -> [Double]
     sumVectorsL p1 p2 =
-        if (P.length p1 P.>= P.length p2)
-        then P.zipWith (+) p1 (p2 P.++ P.repeat 0)
-        else sumVectorsL p2 p1
+        let l1     = P.length p1
+            l2     = P.length p2
+            maxlen = P.max l1 l2
+        in
+        P.zipWith (+) (p1 P.++ P.replicate (maxlen - l1) 0)
+                      (p2 P.++ P.replicate (maxlen - l2) 0)
 
     genChebMatrix :: Int -> Matrix Double
     genChebMatrix n = 
@@ -123,7 +120,7 @@ where
             matrix = P.map (\x -> padList x (n+1)) chebPolynomials
             flattened = P.concat matrix
         in
-            A.fromList (Z:.(n+1):.(n+1)) flattened
+        A.fromList (Z:.(n+1):.(n+1)) flattened
 
     multiplyCoeff :: Exp Double -> Acc (Vector Double) -> Acc (Vector Double)
     multiplyCoeff coeff vec = A.map (* coeff) vec
@@ -131,13 +128,12 @@ where
     -- Given a function f, and degree n, calculates chebyshev approximation
     -- Get list of coeffs and chebyshev polynomials. Want to zip each coeff w/ respective polynomial and multiply. 
     -- Finally, fold over all polynomials
-    chebf :: (Exp Double -> Exp Double) -> Int -> Acc (Vector Double)
+ {-    chebf :: (Exp Double -> Exp Double) -> Int -> Acc (Vector Double)
     chebf f n =
-        let coeffs = chebCoeff f (constant n)
+        let n'       = constant n
+            coeffs   = chebCoeff' f n'
             chebPols = genChebMatrix n
-            counter = enumFromN (lift (Z:.n)) 0
-            chebList = A.map (\x -> slice (use chebPols) (constant (Z :. (x::Int) :. All)))(counter)
-            lst = A.zip coeffs (chebList)
-            mapped = A.map (\(x, y) -> A.map (*x) y) zipped
-            in A.fold (\x y -> sumVectors x y) (constant 0) mapped
---(c0 f nodes n)
+            coeffsM  = A.replicate (lift (Z :. All :. n')) coeffs
+        in
+        A.sum $ A.transpose $ A.zipWith (*) coeffsM (use chebPols)
+ -}
