@@ -144,5 +144,28 @@ where
             coeffsM  = A.replicate (lift (Z :. All :. (n'+1))) coeffs
         in
         A.sum $ A.transpose $ A.zipWith (*) coeffsM (use chebPols)
-     --   A.replicate (lift (Z :. All :. n')) coeffs
  
+    -- Appends 0 to front of the list
+    multiplyByX :: Acc (Vector Double)  -> Acc (Vector Double)
+    multiplyByX pol = (enumFromN (lift (Z:.(1::Int))) 0) A.++ pol
+
+
+   {-  padPol ::  Int -> Int -> Acc (Vector Double) -> Acc (Vector Double)
+    padPol n m coeff =
+        let 
+            as' =  A.fill (constant (Z :. n)) 0
+            bs' =  A.fill (constant (Z :. m)) 0
+        in  as' A.++ coeff A.++ bs'
+    
+        
+
+    
+    multPoly :: Acc (Vector Double) -> Acc (Vector Double) -> Acc (Vector Double)
+    multPoly p1 p2 =
+        let I1 n = shape p2
+            enum = [0..n]
+            rev  = P.reverse enum
+            zipped = A.zipWith3 padPol enum rev p1
+            --p1Coeff = A.transpose (A.replicate (lift (Z :. All :. n + 1)) p1)
+        in 
+            zipped -}
