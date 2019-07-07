@@ -61,13 +61,19 @@ where
     sumVectors p1 p2 = zipWithPad (+) p1 p2
 
     f :: Exp Double -> Exp Double
-    f x = 2+x/(cos x)
+    f x = cos x
 
      -- Computes f (x_k) * cos (x_k)
     
---    c0 :: (Exp Double -> Exp Double) -> Acc (Vector Double) -> Exp Int -> Exp Double
-  --  c0 f nodes n =
-    --    1/(1*(A.fromIntegral(n)+1))*(the (sumList(A.map f nodes)))
+    c0' :: (Exp Double -> Exp Double) -> Acc (Matrix Double) ->  Acc (Vector Double)
+    c0' f nodes0 =
+        let I2 _ n = shape nodes0
+        in  A.map (\x -> 1.0 / (A.fromIntegral (n))*x )
+        $ A.sum
+        $ A.generate (shape nodes0) $ \(I2 j k) ->
+            f (computeChebNode n k)
+        {- --1/(1*(A.fromIntegral(n)+1))*
+        (A.sum(A.map f nodes))   -}
 
     cj' :: (Exp Double -> Exp Double) -> Acc (Matrix Double) ->  Acc (Vector Double)
     cj' f nodesM =
@@ -75,15 +81,17 @@ where
         in  A.map (\x -> 2.0 / (A.fromIntegral n + 1.0)*x )
         $ A.sum
         $ A.generate (shape nodesM) $ \(I2 j k) ->
-            f (computeChebNode n k)*cos (A.fromIntegral(j) *(2*A.fromIntegral(n)+1-2*A.fromIntegral(k))/(2*A.fromIntegral(n)+2)*pi)
+            f (computeChebNode n k)*cos (A.fromIntegral(j+1) *(2*A.fromIntegral(n)+1-2*A.fromIntegral(k))/(2*A.fromIntegral(n)+2)*pi)
          --   A.fromIntegral(j)
     
     chebCoeff' :: (Exp Double -> Exp Double) -> Exp Int -> Acc (Vector Double)
     chebCoeff' f n =
       let nodesV  = chebNodes n
           nodesM  = A.replicate (lift (Z :. n :. All)) nodesV
+          nodes0  = A.replicate (lift (Z :. (1::Int) :. All)) nodesV
        in
-       cj' f nodesM    
+       A.reverse ((c0' f nodes0) A.++ (cj' f nodesM ))
+        
 
      -- Takes in an order. Returns list of chebyshev polynomials
     chebPol :: Int -> [[Double]]
