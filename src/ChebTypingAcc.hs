@@ -30,10 +30,10 @@ where
                     calcCheb f x (n P.* 2)
             else
                 cutOffCheb (fnComposition fnRep (fromCheb x))
-
+{- 
     cos :: Cheb -> Cheb
     cos x = 
-        calcCheb (P.cos) x 8
+        calcCheb (P.cos) x 8 -}
 
     sin :: Cheb -> Cheb
     sin x = 
@@ -56,11 +56,6 @@ where
         let f = newtonApprox (P.log) 10 in
             Cheb (fnComposition f (fromCheb(x)))
 
- 
-    --fromCheb (x::Float) = [fromx]
-    --fromCheb (x::Double) = [x]
-    --fromCheb (x::Int) = [fromInteger x]
-
     cutOffCheb :: Cheb -> Cheb
     cutOffCheb c = 
         let env = envelope (map abs c) [0..length (c)]
@@ -82,6 +77,7 @@ where
 
     instance P.Num (Acc Cheb) where
         xs + ys = cutOffCheb (sumVectors xs ys)
+        xs - ys = cutOffCheb (sumVectors xs (A.map (* (-1) ys)))
 
     instance P.Fractional (Acc Cheb) -- where
         -- (/) = error "sadness"
