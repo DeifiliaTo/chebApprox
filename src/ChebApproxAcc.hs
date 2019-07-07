@@ -61,7 +61,7 @@ where
     sumVectors p1 p2 = zipWithPad (+) p1 p2
 
     f :: Exp Double -> Exp Double
-    f x = cos x
+    f x = sin (cos x)
 
      -- Computes f (x_k) * cos (x_k)
     
@@ -124,7 +124,7 @@ where
 
     genChebMatrix :: Int -> Matrix Double
     genChebMatrix n = 
-        let chebPolynomials = chebPol n 
+        let chebPolynomials = chebPol (n)  
             matrix = P.map (\x -> padList x (n+1)) chebPolynomials
             flattened = P.concat matrix
         in
@@ -136,12 +136,13 @@ where
     -- Given a function f, and degree n, calculates chebyshev approximation
     -- Get list of coeffs and chebyshev polynomials. Want to zip each coeff w/ respective polynomial and multiply. 
     -- Finally, fold over all polynomials
- {-    chebf :: (Exp Double -> Exp Double) -> Int -> Acc (Vector Double)
+    chebf :: (Exp Double -> Exp Double) -> Int -> Acc (Vector Double)
     chebf f n =
         let n'       = constant n
-            coeffs   = chebCoeff' f n'
-            chebPols = genChebMatrix n
-            coeffsM  = A.replicate (lift (Z :. All :. n')) coeffs
+            coeffs   = chebCoeff' f n' -- size n+1 vector
+            chebPols = genChebMatrix n -- size (n+1)*(n+1) matrix
+            coeffsM  = A.replicate (lift (Z :. All :. (n'+1))) coeffs
         in
         A.sum $ A.transpose $ A.zipWith (*) coeffsM (use chebPols)
- -}
+     --   A.replicate (lift (Z :. All :. n')) coeffs
+ 
