@@ -28,6 +28,9 @@ where
     arr1 :: Acc (Vector Double)
     arr1 = use (fromList (Z :. 10) [0..])
 
+    arr2 :: Acc (Vector Double)
+    arr2 = use (fromList (Z :. 3) [1, 2, 3])
+
     vec0 :: Acc (Vector Double)
     vec0 = use (fromList (Z :. 1) [1..])
 
@@ -149,18 +152,26 @@ where
     multiplyByX :: Acc (Vector Double)  -> Acc (Vector Double)
     multiplyByX pol = (enumFromN (lift (Z:.(1::Int))) 0) A.++ pol
 
-
-   {-  padPol ::  Int -> Int -> Acc (Vector Double) -> Acc (Vector Double)
-    padPol n m coeff =
-        let 
-            as' =  A.fill (constant (Z :. n)) 0
-            bs' =  A.fill (constant (Z :. m)) 0
-        in  as' A.++ coeff A.++ bs'
+ {-    genList :: 
+    genList = 
+        A.generate (shape nodesM) $ \(I2 j k) ->
+            j+k
+  -}
+   
+    genShiftedCoeff :: Acc (Vector Double) -> Exp Int -> Acc (Matrix Double) 
+    genShiftedCoeff vec n = A.generate (index2 n (2*n)) $ \(I2 j k) -> 
+        cond (j A.< k A.|| k A.> (j+n))
+        (constant 0)
+        (vec ! (I1 (k-j)))  
     
+    genCoeffMatrix :: Acc (Vector Double) -> Exp Int -> Acc (Matrix Double)
+    genCoeffMatrix coeff n =
+        (A.replicate (lift (Z :. All :. (2*n))) coeff)
+
         
 
     
-    multPoly :: Acc (Vector Double) -> Acc (Vector Double) -> Acc (Vector Double)
+    {- multPoly :: Acc (Vector Double) -> Acc (Vector Double) -> Acc (Vector Double)
     multPoly p1 p2 =
         let I1 n = shape p2
             enum = [0..n]
