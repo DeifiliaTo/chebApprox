@@ -29,7 +29,10 @@ where
     arr1 = use (fromList (Z :. 10) [0..])
 
     arr2 :: Acc (Vector Double)
-    arr2 = use (fromList (Z :. 3) [1, 2, 3])
+    arr2 = use (fromList (Z :. 3) [1, 3, 2])
+
+    arr3 :: Acc (Vector Double)
+    arr3 = use (fromList (Z :. 3) [4, 5, 1])
 
     vec0 :: Acc (Vector Double)
     vec0 = use (fromList (Z :. 1) [1..])
@@ -160,7 +163,7 @@ where
    
     genShiftedCoeff :: Acc (Vector Double) -> Exp Int -> Acc (Matrix Double) 
     genShiftedCoeff vec n = A.generate (index2 n (2*n)) $ \(I2 j k) -> 
-        cond (j A.< k A.|| k A.> (j+n))
+        cond (j A.> k A.|| (j A.< k A.&& (k-j) A.> n))
         (constant 0)
         (vec ! (I1 (k-j)))  
     
@@ -170,13 +173,30 @@ where
 
         
 
-    
-    {- multPoly :: Acc (Vector Double) -> Acc (Vector Double) -> Acc (Vector Double)
+    multPoly :: Acc (Vector Double) -> Acc (Vector Double) -> Acc (Vector Double)
     multPoly p1 p2 =
-        let I1 n = shape p2
-            enum = [0..n]
-            rev  = P.reverse enum
-            zipped = A.zipWith3 padPol enum rev p1
+        let I1 n = shape p1
+            I1 m = shape p1
+            minDim = A.min n m
+            zipped = A.zipWith (*) (genCoeffMatrix p1 minDim) (genShiftedCoeff p2 minDim)
             --p1Coeff = A.transpose (A.replicate (lift (Z :. All :. n + 1)) p1)
         in 
-            zipped -}
+        A.sum $ A.transpose $ zipped
+    
+    arr' :: Acc (Vector Double)
+    arr' = use (fromList (Z :. 5) [0..]) 
+
+    findMax :: Acc (Vector Double) -> Exp Double
+    findMax vecSlice =   (the (A.maximum vecSlice))
+        --(A.fold (A.max) (vecSlice ! (I1 0)) (vecSlice))
+
+    
+    envelope :: Acc (Vector Double) -> Acc (Vector Double)
+    envelope coeff =
+        let mag         = A.map A.abs coeff
+            I1 n        = shape coeff
+            coeffMatrix = A.generate (index2 n n) $ \(I2 j k) -> 
+                cond (j A.> k)
+                (constant 0)
+                (mag ! (I1 k))  
+        in A.maximum $  coeffMatrix
