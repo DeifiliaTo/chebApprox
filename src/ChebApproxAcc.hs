@@ -190,7 +190,16 @@ where
     findMax vecSlice =   (the (A.maximum vecSlice))
         --(A.fold (A.max) (vecSlice ! (I1 0)) (vecSlice))
 
-    
+
+    res :: Acc (Vector Double)
+    res = chebf f 15
+
+    env :: Acc (Vector Double)
+    env = envelope res
+
+    envMat :: Acc (Matrix Double)
+    envMat = genEnvMatrix env
+
     envelope :: Acc (Vector Double) -> Acc (Vector Double)
     envelope coeff =
         let mag         = A.map A.abs coeff
@@ -199,4 +208,40 @@ where
                 cond (j A.> k)
                 (constant 0)
                 (mag ! (I1 k))  
-        in A.maximum $  coeffMatrix
+        in A.maximum $ coeffMatrix
+
+    -- Define/set value of tolerance 
+    tol :: Exp Double
+    tol = constant (1e-10)
+
+    genEnvMatrix :: Acc (Vector Double) -> Acc (Matrix Double)
+    genEnvMatrix env = 
+        let I1 n = shape env
+        in 
+            A.generate (index2 (n-2) (n-2)) $ \(I2 j k) -> 
+            cond (j A.> k)
+            (constant 0)
+            (env ! (I1 (k+2))) 
+    
+    calcR :: Acc (Vector Double) -> Acc (Vector Double)
+    calcR env = A.map (\x -> 3*(1-log (x)/log (tol))) (A.drop 2 env) -- starts @ index 2 and up
+
+    rl :: Acc (Vector Double)
+    rl = calcR env
+
+    plateauMatrix :: Acc (Matrix Double) -> Acc (Vector Double) -> Acc (Matrix Double)
+    plateauMatrix envMat rList =
+        let I1 n = shape rList in
+            A.generate (index2 n n) $ \(I2 j k) ->
+                let kIndex = (A.round (((constant 1.25):: Exp Double )*A.fromIntegral(j)+5)) :: Exp Int
+                in
+                cond ((kIndex A.< n A.|| kIndex A.== n) A.&& ((envMat ! (I2 j kIndex)) / (envMat ! (I2 j 0)) A.> (rList ! (I1 j))) )
+                --cond (envMat ! (I2 j k) A./= 0 A.&& j A./= 0 A.&& envMat ! (I2 j k) A.> (rList ! (I1 k)))
+                (constant 1)
+                (constant 0)
+
+
+
+
+            
+    
