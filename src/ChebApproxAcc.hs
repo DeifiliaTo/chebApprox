@@ -154,25 +154,38 @@ where
     -- Appends 0 to front of the list
     multiplyByX :: Acc (Vector Double)  -> Acc (Vector Double)
     multiplyByX pol = (enumFromN (lift (Z:.(1::Int))) 0) A.++ pol
-
- {-    genList :: 
-    genList = 
-        A.generate (shape nodesM) $ \(I2 j k) ->
-            j+k
-  -}
    
+  {-
+    Generates a matrix of coefficients with padded zeros. Ex: vec = [1, 2, 3]:
+    [1, 2, 3, 0, 0, 0]
+    [0, 1, 2, 3, 0, 0]
+    [0, 0, 1, 2, 3, 0]
+    [0, 0, 0, 1, 2, 3]
+  -}
     genShiftedCoeff :: Acc (Vector Double) -> Exp Int -> Acc (Matrix Double) 
     genShiftedCoeff vec n = A.generate (index2 n (2*n)) $ \(I2 j k) -> 
         cond (j A.> k A.|| (j A.< k A.&& (k-j) A.> n))
         (constant 0)
         (vec ! (I1 (k-j)))  
     
+  {-
+    Generates a matrix of coefficients of same size as genShiftedCoeff. One of pols when multiplying two together. 
+    Ex: vec = [4, 5]:
+    [4, 4, 4, 4, 4, 4]
+    [5, 5, 5, 5, 5, 5]
+    [0, 0, 0, 0, 0, 0]
+    [0, 0, 0, 0, 0, 0]
+  -}
     genCoeffMatrix :: Acc (Vector Double) -> Exp Int -> Acc (Matrix Double)
     genCoeffMatrix coeff n =
         (A.replicate (lift (Z :. All :. (2*n))) coeff)
 
         
-
+  {-
+    Multiplies two polynomials.
+    Ex: p1 = [4, 5] p2 = [1, 3]: 
+    [4, 17, 15]
+  -}
     multPoly :: Acc (Vector Double) -> Acc (Vector Double) -> Acc (Vector Double)
     multPoly p1 p2 =
         let I1 n = shape p1
@@ -183,13 +196,9 @@ where
         in 
         A.sum $ A.transpose $ zipped
     
+    {-Example case-}
     arr' :: Acc (Vector Double)
     arr' = use (fromList (Z :. 5) [0..]) 
-
-    findMax :: Acc (Vector Double) -> Exp Double
-    findMax vecSlice =   (the (A.maximum vecSlice))
-        --(A.fold (A.max) (vecSlice ! (I1 0)) (vecSlice))
-
 
     res :: Acc (Vector Double)
     res = chebf f 15
@@ -200,6 +209,10 @@ where
     envMat :: Acc (Matrix Double)
     envMat = genEnvMatrix env
 
+  {-
+    Given a list of coefficients, return a list of coefficients of max magnitude of descending order
+    Ex: [3, -2, 0.1, 0.4] -> [3, 2, 0.4, 0.4]
+  -}
     envelope :: Acc (Vector Double) -> Acc (Vector Double)
     envelope coeff =
         let mag         = A.map A.abs coeff
@@ -214,6 +227,15 @@ where
     tol :: Exp Double
     tol = constant (1e-10)
 
+  {-
+    Given an envelope, generates a matrix padded with ones in bottom left corner. First two digits are cut off by definition
+    Ex:
+    env = [4, 2, 1, 0.1, 0.1]
+    genEnvMatrix env = 
+        [1, 0.1, 0.1]
+        [0, 0.1, 0.1]
+        [0, 0.0, 0.1]
+  -}
     genEnvMatrix :: Acc (Vector Double) -> Acc (Matrix Double)
     genEnvMatrix env = 
         let I1 n = shape env
@@ -223,22 +245,58 @@ where
             (constant 0)
             (env ! (I1 (k+2))) 
     
+  {-
+    For all values in env, calculate 3*(1-log (x) / log (tol))
+  -}
     calcR :: Acc (Vector Double) -> Acc (Vector Double)
     calcR env = A.map (\x -> 3*(1-log (x)/log (tol))) (A.drop 2 env) -- starts @ index 2 and up
 
+    -- Example
     rl :: Acc (Vector Double)
     rl = calcR env
 
+  {-
+    Returns boolean matrix for whether or not the index of (j, k) is a valid plateau point. 
+    (Can probably be done more efficiently in 1 dimension)
+  -}
     plateauMatrix :: Acc (Matrix Double) -> Acc (Vector Double) -> Acc (Matrix Double)
     plateauMatrix envMat rList =
         let I1 n = shape rList in
             A.generate (index2 n n) $ \(I2 j k) ->
                 let kIndex = (A.round (((constant 1.25):: Exp Double )*A.fromIntegral(j)+5)) :: Exp Int
                 in
-                cond ((kIndex A.< n A.|| kIndex A.== n) A.&& ((envMat ! (I2 j kIndex)) / (envMat ! (I2 j 0)) A.> (rList ! (I1 j))) )
+                cond (k A.== kIndex A.&& (kIndex A.< n A.|| kIndex A.== n) A.&& ((envMat ! (I2 j kIndex)) / (envMat ! (I2 j 0)) A.> (rList ! (I1 j))) )
                 --cond (envMat ! (I2 j k) A./= 0 A.&& j A./= 0 A.&& envMat ! (I2 j k) A.> (rList ! (I1 k)))
                 (constant 1)
                 (constant 0)
+    
+  {-
+    Given a chebyshev function representation, return the plateau point (or size n-1 if none)
+    Calculates the envelope, plateau matrix, and finds max vertically. Will either have 0 or 1 in array "summed"
+    Then, zips wth an enumeration to determine the index that the plateau point is at.
+  -}
+    plateauPoint :: Acc (Vector Double) -> Exp Double
+    plateauPoint cheb = 
+        let envFn = envelope cheb 
+            I1 n = shape envFn
+            envMat = genEnvMatrix envFn
+            rl = calcR envFn
+            pMatrix = plateauMatrix envMat rl
+            summed = A.maximum $ pMatrix
+            zipped = A.zipWith (*) summed (enumFromN (lift (Z:.(n+2))) 2)
+        in
+        the (A.maximum ( zipped)) -- really, need min but > 0. How?
+
+    -- just a test case
+    genArr :: Acc (Vector Double) -> Acc (Vector Double)
+    genArr cheb = 
+        fill (index1 (10)) (plateauPoint cheb)
+    
+{-     chebfPrecise :: (Exp Double -> Exp Double) -> Acc (Vector Double)
+    chebfPrecise f = 
+        awhile  ()
+ -}
+        
 
 
 
