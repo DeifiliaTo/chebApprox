@@ -297,23 +297,26 @@ where
       acond (the (plateauPoint arr) A.> criteria)
       (unit (constant True)) --syntax?
       (unit (constant False))
-    {-
+    
+    extendChebf :: (Exp Double -> Exp Double) -> Int -> Acc (Vector Double) -> Acc (Vector Double)
+    extendChebf f n chebRep =
+      chebf f (2*n)
+    
     chebfPrecise :: (Exp Double -> Exp Double) -> Acc (Vector Double)
     chebfPrecise f = 
-        acond (ifEnough (constant 30) ) -- 30 will def be changed
+        awhile (ifEnough (constant 30)) -- 30 will def be changed
         (
-          arr1
-     {-      let I1 n = shape res 
-              res = chebf f (2*n)
+    --      arr1
+          let I1 n = shape res 
+              res = chebf f (2*8)
           in
-          res -}
+          extendChebf f 16 -- By defn of awhile, need function to extend 
         )
         (
-          arr1
-          {- let res = chebf 8 in
-            res -}
+          let res = chebf f 8 in
+          res
         )
 
 
             
-     -}
+     
