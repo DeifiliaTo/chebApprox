@@ -284,8 +284,6 @@ where
             pMatrix = plateauMatrix envMat rl
             summed = A.maximum $ pMatrix
             zipped = A.zipWith (*) summed (enumFromN (lift (Z:.(n+2))) 2)
-            --positive = A.map (\x -> x A.> 0 ? (just x, nothing)) zipped
-            --nonZero = A.map fromMaybe positive
             positive = (A.filter (\x -> x A.> 0) zipped)
             filteredPos = extract (CPU.run $ positive)
         in
@@ -293,16 +291,29 @@ where
 
     extract :: ( (Vector Double, Array DIM0 Int)) -> Acc (Vector Double)
     extract (x, y) = use x
-    
-    
-{-     chebfPrecise :: (Exp Double -> Exp Double) -> Acc (Vector Double)
+
+    ifEnough :: Exp Double -> Acc (Vector Double) -> Acc (Scalar Bool) -- Needs to be this type signature if used in awhile 
+    ifEnough criteria arr =
+      acond (the (plateauPoint arr) A.> criteria)
+      (unit (constant True)) --syntax?
+      (unit (constant False))
+    {-
+    chebfPrecise :: (Exp Double -> Exp Double) -> Acc (Vector Double)
     chebfPrecise f = 
-        awhile  ()
- -}
-        
-
-
+        acond (ifEnough (constant 30) ) -- 30 will def be changed
+        (
+          arr1
+     {-      let I1 n = shape res 
+              res = chebf f (2*n)
+          in
+          res -}
+        )
+        (
+          arr1
+          {- let res = chebf 8 in
+            res -}
+        )
 
 
             
-    
+     -}
