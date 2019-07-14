@@ -13,7 +13,7 @@ where
     import Data.Array.Accelerate.Debug as A
     import Data.Array.Accelerate.Interpreter as I
     import Data.Array.Accelerate.LLVM.Native as CPU
-
+    import Data.Array.Accelerate.Data.Maybe
 
    
     value :: Exp (Int)
@@ -201,7 +201,7 @@ where
     arr' = use (fromList (Z :. 5) [0..]) 
 
     res :: Acc (Vector Double)
-    res = chebf f 15
+    res = chebf f 30
 
     env :: Acc (Vector Double)
     env = envelope res
@@ -275,7 +275,7 @@ where
     Calculates the envelope, plateau matrix, and finds max vertically. Will either have 0 or 1 in array "summed"
     Then, zips wth an enumeration to determine the index that the plateau point is at.
   -}
-    plateauPoint :: Acc (Vector Double) -> Exp Double
+    plateauPoint :: Acc (Vector Double) -> Acc (Scalar (Double))
     plateauPoint cheb = 
         let envFn = envelope cheb 
             I1 n = shape envFn
@@ -284,13 +284,16 @@ where
             pMatrix = plateauMatrix envMat rl
             summed = A.maximum $ pMatrix
             zipped = A.zipWith (*) summed (enumFromN (lift (Z:.(n+2))) 2)
+            --positive = A.map (\x -> x A.> 0 ? (just x, nothing)) zipped
+            --nonZero = A.map fromMaybe positive
+            positive = (A.filter (\x -> x A.> 0) zipped)
+            filteredPos = extract (CPU.run $ positive)
         in
-        the (A.maximum ( zipped)) -- really, need min but > 0. How?
+        A.minimum filteredPos
 
-    -- just a test case
-    genArr :: Acc (Vector Double) -> Acc (Vector Double)
-    genArr cheb = 
-        fill (index1 (10)) (plateauPoint cheb)
+    extract :: ( (Vector Double, Array DIM0 Int)) -> Acc (Vector Double)
+    extract (x, y) = use x
+    
     
 {-     chebfPrecise :: (Exp Double -> Exp Double) -> Acc (Vector Double)
     chebfPrecise f = 
