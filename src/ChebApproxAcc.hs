@@ -174,7 +174,7 @@ where
     [4, 4, 4, 4, 4, 4]
     [5, 5, 5, 5, 5, 5]
     [0, 0, 0, 0, 0, 0]
-    [0, 0, 0, 0, 0, 0]
+    [0, 0, 0, 0, 0, 0]generate
   -}
     genCoeffMatrix :: Acc (Vector Double) -> Exp Int -> Acc (Matrix Double)
     genCoeffMatrix coeff n =
@@ -304,14 +304,14 @@ where
     
     chebfPrecise :: (Exp Double -> Exp Double) -> Acc (Vector Double)
     chebfPrecise f = 
-        awhile (ifEnough (constant 30)) -- 30 will def be changed
+        awhile (ifEnough (constant 30)) -- 30 will be changed
         (
     --      arr1
           let I1 n = shape res 
               res = chebf f (2*8)
           in
-          extendChebf f 16 -- By defn of awhile, need function to extend 
-        )
+          extendChebf f 16 -- By defn of awhile, need function to extend (Type Acc (Vector Double) -> Acc (Vector Double))
+        ) 
         (
           let res = chebf f 8 in
           res
@@ -319,4 +319,10 @@ where
 
 
             
-     
+    calcPol :: Acc (Vector Double) -> Exp Double
+    calcPol result = 
+      let I1 n   = shape result
+          zipped = A.zipWith (A.^) result (enumFromN (lift (Z :. (n+1))) 0)
+      in
+        the (A.fold (+) ( 0) zipped  ):: (Exp Double)
+
