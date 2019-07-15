@@ -317,12 +317,53 @@ where
           res
         )
 
+    -- given a matrix, compute an additional row
+    -- Take in the matrix computed so far, total dim of matrix, and row we are currently on
+    chebPolAcc :: Exp Int -> Acc (Matrix Double) -> Acc (Matrix Double)
+    chebPolAcc n mat =
+      let I2 j _  = shape mat
+          nextRow = generate (index2 1 n) $ \(I2 one k) ->
+            cond (k A.> j)
+            (
+              0
+            )
+            (
+              cond (j A.== 0)
+              (
+                -1*(mat ! index2 (j-2) k)
+              )
+              (
+                2*(mat ! index2 (j-1) (k-1)) - (mat ! index2 (j-2) k)
+              )
+            )
+          nextRow' = A.transpose nextRow
+          mat' = A.transpose mat
+      in
+      A.transpose $ (mat' A.++ nextRow')
+      
+        --nextRow
+      
+    chebPolAccBase :: Exp Int -> Acc (Matrix Double)
+    chebPolAccBase n =
+      generate (index2 2 n) $ \(I2 j k) ->
+        cond (j A.== k)
+        (1)
+        (0)
 
-            
-    calcPol :: Acc (Vector Double) -> Exp Double
+    genChebPolAcc :: Exp Int -> Acc (Matrix Double)
+    genChebPolAcc n =
+      let base = chebPolAccBase n
+          --row  = constant 1
+          three = chebPolAcc n base
+      in
+        chebPolAcc n three
+
+    
+    {- calcPol :: Acc (Vector Double) -> Exp Double
     calcPol result = 
       let I1 n   = shape result
           zipped = A.zipWith (A.^) result (enumFromN (lift (Z :. (n+1))) 0)
       in
         the (A.fold (+) ( 0) zipped  ):: (Exp Double)
 
+ -}
