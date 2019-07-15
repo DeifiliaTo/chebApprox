@@ -341,8 +341,6 @@ where
       in
       A.transpose $ (mat' A.++ nextRow')
       
-        --nextRow
-      
     chebPolAccBase :: Exp Int -> Acc (Matrix Double)
     chebPolAccBase n =
       generate (index2 2 n) $ \(I2 j k) ->
@@ -350,20 +348,30 @@ where
         (1)
         (0)
 
+    
+    ifIter :: Exp Int -> Acc (Matrix Double) -> Acc (Scalar Bool)
+    ifIter n mat =
+      let I2 j _  = shape mat in
+      acond (j A.< n)
+      (unit (constant True))
+      (unit (constant False))
+      
     genChebPolAcc :: Exp Int -> Acc (Matrix Double)
     genChebPolAcc n =
-      let base = chebPolAccBase n
+      let n'   = n + 1
+          base = chebPolAccBase n'
           --row  = constant 1
-          three = chebPolAcc n base
+          three = chebPolAcc n' base
       in
-        chebPolAcc n three
+        awhile (ifIter n')
+        (chebPolAcc n')
+        (base)
+        --chebPolAcc n three
 
-    
     {- calcPol :: Acc (Vector Double) -> Exp Double
     calcPol result = 
       let I1 n   = shape result
           zipped = A.zipWith (A.^) result (enumFromN (lift (Z :. (n+1))) 0)
       in
         the (A.fold (+) ( 0) zipped  ):: (Exp Double)
-
  -}
