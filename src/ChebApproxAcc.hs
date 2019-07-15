@@ -67,7 +67,7 @@ where
     sumVectors p1 p2 = zipWithPad (+) p1 p2
 
     f :: Exp Double -> Exp Double
-    f x = sin (cos x)
+    f x = cos x
 
      -- Computes f (x_k) * cos (x_k)
     
@@ -97,19 +97,6 @@ where
           nodes0  = A.replicate (lift (Z :. (1::Int) :. All)) nodesV
        in
        A.reverse ((c0' f nodes0) A.++ (cj' f nodesM ))
-        
-
-     -- Takes in an order. Returns list of chebyshev polynomials
-    chebPol :: Int -> [[Double]]
-    chebPol 0 = [[1.0]]
-    chebPol 1 = [[0.0, 1.0], [1.0]]
-    chebPol n =
-        let prevResult   = chebPol (n-1)
-            multTwo      = P.map (\x -> P.map (*2.0) x) prevResult
-            firstTerm    = P.map (\x -> 0:x) multTwo
-            subtractTerm = sumVectorsL (P.head firstTerm) (P.map P.negate (P.head (P.tail prevResult)))
-        in
-        subtractTerm : prevResult
 
     padList :: [Double] -> Int -> [Double]
     padList lst n = 
@@ -128,28 +115,19 @@ where
         P.zipWith (+) (p1 P.++ P.replicate (maxlen - l1) 0)
                       (p2 P.++ P.replicate (maxlen - l2) 0)
 
-    genChebMatrix :: Int -> Matrix Double
-    genChebMatrix n = 
-        let chebPolynomials = chebPol (n)  
-            matrix = P.map (\x -> padList x (n+1)) chebPolynomials
-            flattened = P.concat matrix
-        in
-        A.fromList (Z:.(n+1):.(n+1)) flattened
-
     multiplyCoeff :: Exp Double -> Acc (Vector Double) -> Acc (Vector Double)
     multiplyCoeff coeff vec = A.map (* coeff) vec
     
     -- Given a function f, and degree n, calculates chebyshev approximation
     -- Get list of coeffs and chebyshev polynomials. Want to zip each coeff w/ respective polynomial and multiply. 
     -- Finally, fold over all polynomials
-    chebf :: (Exp Double -> Exp Double) -> Int -> Acc (Vector Double)
+    chebf :: (Exp Double -> Exp Double) -> Exp Int -> Acc (Vector Double)
     chebf f n =
-        let n'       = constant n
-            coeffs   = chebCoeff' f n' -- size n+1 vector
-            chebPols = genChebMatrix n -- size (n+1)*(n+1) matrix
-            coeffsM  = A.replicate (lift (Z :. All :. (n'+1))) coeffs
+        let coeffs   = chebCoeff' f n -- size n+1 vector
+            chebPols = genChebPolAcc n -- size (n+1)*(n+1) matrix
+            coeffsM  = A.replicate (lift (Z :. All :. (n+1))) coeffs
         in
-        A.sum $ A.transpose $ A.zipWith (*) coeffsM (use chebPols)
+        A.sum $ A.transpose $ A.zipWith (*) coeffsM chebPols
  
     -- Appends 0 to front of the list
     multiplyByX :: Acc (Vector Double)  -> Acc (Vector Double)
@@ -201,7 +179,7 @@ where
     arr' = use (fromList (Z :. 5) [0..]) 
 
     res :: Acc (Vector Double)
-    res = chebf f 30
+    res = chebf f 10
 
     env :: Acc (Vector Double)
     env = envelope res
@@ -289,32 +267,31 @@ where
         in
         A.minimum filteredPos
 
-    extract :: ( (Vector Double, Array DIM0 Int)) -> Acc (Vector Double)
+    extract :: (Vector Double, Array DIM0 Int) -> Acc (Vector Double)
     extract (x, y) = use x
 
     ifEnough :: Exp Double -> Acc (Vector Double) -> Acc (Scalar Bool) -- Needs to be this type signature if used in awhile 
     ifEnough criteria arr =
-      acond (the (plateauPoint arr) A.> criteria)
-      (unit (constant True)) --syntax?
+      --let val = ( (plateauPoint arr) ! (I1 0) )in
+      acond (the (plateauPoint arr) A.> criteria) -- issues with "the" operator
+      (unit (constant True))
       (unit (constant False))
     
-    extendChebf :: (Exp Double -> Exp Double) -> Int -> Acc (Vector Double) -> Acc (Vector Double)
-    extendChebf f n chebRep =
+    extendChebf :: (Exp Double -> Exp Double) -> Acc (Vector Double) -> Acc (Vector Double)
+    extendChebf f chebRep =
+      let I1 n = shape chebRep in
       chebf f (2*n)
     
     chebfPrecise :: (Exp Double -> Exp Double) -> Acc (Vector Double)
     chebfPrecise f = 
+      let orig = chebf f 8 
+      in
         awhile (ifEnough (constant 30)) -- 30 will be changed
         (
-    --      arr1
-          let I1 n = shape res 
-              res = chebf f (2*8)
-          in
-          extendChebf f 16 -- By defn of awhile, need function to extend (Type Acc (Vector Double) -> Acc (Vector Double))
+          extendChebf f  -- By defn of awhile, need function to extend (Type Acc (Vector Double) -> Acc (Vector Double))
         ) 
         (
-          let res = chebf f 8 in
-          res
+          orig
         )
 
     -- given a matrix, compute an additional row
@@ -355,23 +332,52 @@ where
       acond (j A.< n)
       (unit (constant True))
       (unit (constant False))
-      
+
     genChebPolAcc :: Exp Int -> Acc (Matrix Double)
     genChebPolAcc n =
       let n'   = n + 1
           base = chebPolAccBase n'
-          --row  = constant 1
-          three = chebPolAcc n' base
       in
         awhile (ifIter n')
         (chebPolAcc n')
         (base)
-        --chebPolAcc n three
 
-    {- calcPol :: Acc (Vector Double) -> Exp Double
-    calcPol result = 
-      let I1 n   = shape result
-          zipped = A.zipWith (A.^) result (enumFromN (lift (Z :. (n+1))) 0)
+    computeVal :: Exp Double -> Exp Double -> Exp Int -> Exp Double
+    computeVal x coeff rep = 
+      coeff * (x A.^ rep)
+ 
+    evalPol :: Acc (Vector Double) -> Exp Double -> Exp Double
+    evalPol pol x = 
+      let I1 n   = shape pol
+          zipped = A.zipWith (computeVal x) pol (enumFromN (lift (Z :. (n+1))) 0)
       in
-        the (A.fold (+) ( 0) zipped  ):: (Exp Double)
- -}
+         the (A.fold (+) (0) zipped) -- (Exp Double)
+  
+    -- if coeffs are: [1, 0, 2], I need to get vals for [-1, 0, 1, 2], then:
+    -- [1, 0, 2] [-1 -1 -1]
+    -- [1, 0, 2] [ 0  0  0]
+    -- [1, 0, 2] [ 1  1  1]
+    -- [1, 0, 2] [ 2  2  2]
+    evalOverRange :: Acc (Vector Double) ->  Acc (Vector Double)
+    evalOverRange pol =
+      let I1 n = shape pol
+          lst = enumFromStepN (lift (Z :. (constant 10))) (constant (-1)) (constant 0.1)        
+          repCoeff = A.replicate (lift (Z :. n :. All)) lst
+          eval = A.generate (index2 (constant 10) n) $ \(I2 j k) ->
+            pol ! (I1 k) * (repCoeff ! (I2 j k) A.^ k)
+          
+      in
+        A.sum $ A.transpose $ eval
+    
+    evalFunction :: (Exp Double -> Exp Double) -> Acc (Vector Double)
+    evalFunction f = 
+      let lst = enumFromStepN (lift (Z :. (constant 10))) (constant (-1)) (constant 0.1)        
+      in
+        A.map f lst
+    
+    approxError :: (Exp Double -> Exp Double) -> Acc (Vector Double) -> Acc (Vector Double)
+    approxError f pol =
+      let approx = evalOverRange pol
+          real   = evalFunction f
+      in
+      A.zipWith (-) real approx
