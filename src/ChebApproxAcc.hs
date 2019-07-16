@@ -123,15 +123,11 @@ where
     -- Finally, fold over all polynomials
     chebf :: (Exp Double -> Exp Double) -> Exp Int -> Acc (Vector Double)
     chebf f n =
-        let coeffs   = chebCoeff' f n -- size n+1 vector
+        let coeffs   = A.reverse $ chebCoeff' f n -- size n+1 vector
             chebPols = genChebPolAcc n -- size (n+1)*(n+1) matrix
             coeffsM  = A.replicate (lift (Z :. All :. (n+1))) coeffs
         in
         A.sum $ A.transpose $ A.zipWith (*) coeffsM chebPols
- 
-    -- Appends 0 to front of the list
-    multiplyByX :: Acc (Vector Double)  -> Acc (Vector Double)
-    multiplyByX pol = (enumFromN (lift (Z:.(1::Int))) 0) A.++ pol
    
   {-
     Generates a matrix of coefficients with padded zeros. Ex: vec = [1, 2, 3]:
@@ -157,7 +153,6 @@ where
     genCoeffMatrix :: Acc (Vector Double) -> Exp Int -> Acc (Matrix Double)
     genCoeffMatrix coeff n =
         (A.replicate (lift (Z :. All :. (2*n))) coeff)
-
         
   {-
     Multiplies two polynomials.
@@ -179,7 +174,7 @@ where
     arr' = use (fromList (Z :. 5) [0..]) 
 
     res :: Acc (Vector Double)
-    res = chebf f 10
+    res = chebf f 15
 
     env :: Acc (Vector Double)
     env = envelope res
@@ -353,6 +348,9 @@ where
       in
          the (A.fold (+) (0) zipped) -- (Exp Double)
   
+
+    samplePol :: Acc (Vector Double)
+    samplePol = use (fromList (Z :. 3) [1, 0, 2]) -- 1 + x ^2
     -- if coeffs are: [1, 0, 2], I need to get vals for [-1, 0, 1, 2], then:
     -- [1, 0, 2] [-1 -1 -1]
     -- [1, 0, 2] [ 0  0  0]
@@ -362,12 +360,12 @@ where
     evalOverRange pol =
       let I1 n = shape pol
           lst = enumFromStepN (lift (Z :. (constant 10))) (constant (-1)) (constant 0.1)        
-          repCoeff = A.replicate (lift (Z :. n :. All)) lst
+          repCoeff =  A.transpose $ A.replicate (lift (Z :. n :. All)) lst
           eval = A.generate (index2 (constant 10) n) $ \(I2 j k) ->
-            pol ! (I1 k) * (repCoeff ! (I2 j k) A.^ k)
-          
+            pol ! (I1 k) * 
+            (repCoeff ! (I2 j k) A.^ k)
       in
-        A.sum $ A.transpose $ eval
+        A.sum $ eval
     
     evalFunction :: (Exp Double -> Exp Double) -> Acc (Vector Double)
     evalFunction f = 
@@ -380,4 +378,4 @@ where
       let approx = evalOverRange pol
           real   = evalFunction f
       in
-      A.zipWith (-) real approx
+      A.zipWith (-) real approx 
