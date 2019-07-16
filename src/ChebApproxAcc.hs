@@ -136,9 +136,9 @@ where
     [0, 0, 1, 2, 3, 0]
     [0, 0, 0, 1, 2, 3]
   -}
-    genShiftedCoeff :: Acc (Vector Double) -> Exp Int -> Acc (Matrix Double) 
-    genShiftedCoeff vec n = A.generate (index2 n (2*n)) $ \(I2 j k) -> 
-        cond (j A.> k A.|| (j A.< k A.&& (k-j) A.> n))
+    genShiftedCoeff :: Acc (Vector Double) ->  Exp Int -> Acc (Matrix Double) 
+    genShiftedCoeff vec n  = A.generate (index2 n n) $ \(I2 j k) -> 
+        cond (j A.> k A.|| (j A.< k A.&& (k-j) A.>= n))
         (constant 0)
         (vec ! (I1 (k-j)))  
     
@@ -150,9 +150,9 @@ where
     [0, 0, 0, 0, 0, 0]
     [0, 0, 0, 0, 0, 0]generate
   -}
-    genCoeffMatrix :: Acc (Vector Double) -> Exp Int -> Acc (Matrix Double)
+    genCoeffMatrix :: Acc (Vector Double) -> Exp Int  -> Acc (Matrix Double)
     genCoeffMatrix coeff n =
-        (A.replicate (lift (Z :. All :. (2*n))) coeff)
+        (A.replicate (lift (Z :. All :. n) coeff)
         
   {-
     Multiplies two polynomials.
@@ -162,9 +162,9 @@ where
     multPoly :: Acc (Vector Double) -> Acc (Vector Double) -> Acc (Vector Double)
     multPoly p1 p2 =
         let I1 n = shape p1
-            I1 m = shape p1
-            minDim = A.min n m
-            zipped = A.zipWith (*) (genCoeffMatrix p1 minDim) (genShiftedCoeff p2 minDim)
+            I1 m = shape p2
+            dimPol = n+m-1
+            zipped = A.zipWith (*) (genCoeffMatrix p1 dimPol) (genShiftedCoeff p2 dimPol)
             --p1Coeff = A.transpose (A.replicate (lift (Z :. All :. n + 1)) p1)
         in 
         A.sum $ A.transpose $ zipped
