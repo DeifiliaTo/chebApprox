@@ -341,6 +341,7 @@ where
     computeVal x coeff rep = 
       coeff * (x A.^ rep)
  
+    -- given pol and point, compute
     evalPol :: Acc (Vector Double) -> Exp Double -> Exp Double
     evalPol pol x = 
       let I1 n   = shape pol
@@ -379,3 +380,60 @@ where
           real   = evalFunction f
       in
       A.zipWith (-) real approx 
+
+    composeMat1 :: Acc (Vector Double) -> Acc (Matrix Double)
+    composeMat1 pol1 =
+      let I1 n = shape pol1
+      in
+        A.transpose $ A.replicate (lift (Z :. n :. All)) pol1
+    
+   
+    ifIterPow :: Exp Int -> Acc (Vector Double) -> Acc (Scalar Bool)
+    ifIterPow totalSize vec =
+      let I1 j = shape vec in
+      acond (j A.< totalSize)
+      (unit (constant True))
+      (unit (constant False))
+      
+    pow :: Exp Int -> Exp Int -> Acc (Vector Double) -> Acc (Vector Double)
+    pow n m vec = 
+      let totalSize = n+m-2 in
+      awhile (ifIterPow totalSize)
+      (multPoly vec)
+      (vec)
+
+   -- given a matrix, compute an additional row
+    -- Take in the matrix computed so far, total dim of matrix, and row we are currently on
+    chebCompAcc :: Exp Int -> Acc (Vector Double) -> Acc (Matrix Double) -> Acc (Matrix Double)
+    chebCompAcc n vec mat =
+      let I2 j _  = shape mat
+          I1 m    = shape vec
+          nextRow = pow n m vec
+          nextRow' = A.transpose $ A.generate (index2 1 (n+m-2)) $ \(I2 j k) -> nextRow ! (I1 k)
+          mat' = A.transpose mat
+      in
+      A.transpose $ (mat' A.++ nextRow')
+      
+    chebCompAccBase :: Exp Int -> Acc (Vector Double) -> Acc (Matrix Double)
+    chebCompAccBase n vec =
+      A.generate (index2 1 n) $ \(I2 j k) ->
+        let I1 m = shape vec in
+          cond (k A.< m)
+          (vec ! (I1 k))
+          (0)
+
+    ifIterComp :: Exp Int -> Acc (Matrix Double) -> Acc (Scalar Bool)
+    ifIterComp n mat =
+      let I2 j _  = shape mat in
+      acond (j A.< n)
+      (unit (constant True))
+      (unit (constant False))
+
+    genChebCompAcc :: Exp Int -> Acc (Vector Double) -> Acc (Matrix Double)
+    genChebCompAcc n vec =
+      let n'   = n + 1
+          base = chebCompAccBase n' vec
+      in
+        awhile (ifIter n')
+        (chebCompAcc n' vec)
+        (base)
