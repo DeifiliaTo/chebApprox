@@ -32,7 +32,7 @@ where
     arr2 = use (fromList (Z :. 3) [1, 3, 2])
 
     arr3 :: Acc (Vector Double)
-    arr3 = use (fromList (Z :. 3) [4, 5, 1])
+    arr3 = use (fromList (Z :. 3) [1, 3, 2])
 
     vec0 :: Acc (Vector Double)
     vec0 = use (fromList (Z :. 1) [1..])
@@ -152,7 +152,7 @@ where
   -}
     genCoeffMatrix :: Acc (Vector Double) -> Exp Int  -> Acc (Matrix Double)
     genCoeffMatrix coeff n =
-        (A.replicate (lift (Z :. All :. n) coeff)
+        (A.replicate (lift (Z :. All :. n)) coeff)
         
   {-
     Multiplies two polynomials.
@@ -381,11 +381,11 @@ where
       in
       A.zipWith (-) real approx 
 
-    composeMat1 :: Acc (Vector Double) -> Acc (Matrix Double)
-    composeMat1 pol1 =
+    composeMat1 :: Acc (Vector Double) -> Exp Int -> Acc (Matrix Double)
+    composeMat1 pol1 m =
       let I1 n = shape pol1
       in
-        A.transpose $ A.replicate (lift (Z :. n :. All)) pol1
+        A.transpose $ A.replicate (lift (Z :. (n*m-2) :. All)) pol1
     
    
     ifIterPow :: Exp Int -> Acc (Vector Double) -> Acc (Scalar Bool)
@@ -395,9 +395,10 @@ where
       (unit (constant True))
       (unit (constant False))
       
+    -- Multiply something of size n, m times.
     pow :: Exp Int -> Exp Int -> Acc (Vector Double) -> Acc (Vector Double)
-    pow n m vec = 
-      let totalSize = n+m-2 in
+    pow nSize mTimes vec = 
+      let totalSize = (nSize-1) A.* mTimes-2 in
       awhile (ifIterPow totalSize)
       (multPoly vec)
       (vec)
@@ -406,21 +407,38 @@ where
     -- Take in the matrix computed so far, total dim of matrix, and row we are currently on
     chebCompAcc :: Exp Int -> Acc (Vector Double) -> Acc (Matrix Double) -> Acc (Matrix Double)
     chebCompAcc n vec mat =
-      let I2 j _  = shape mat
-          I1 m    = shape vec
-          nextRow = pow n m vec
-          nextRow' = A.transpose $ A.generate (index2 1 (n+m-2)) $ \(I2 j k) -> nextRow ! (I1 k)
+      let I2 m _  = shape mat
+          nextRow = pow n (m) vec
+          nextRow' = A.transpose $ A.generate (index2 1 ((n-1)*m+1)) $ \(I2 j k) -> 
+            cond (k A.>= (n-1)*(m)-1) -- TODO check
+            (0)
+            (nextRow ! (I1 k))
           mat' = A.transpose mat
       in
       A.transpose $ (mat' A.++ nextRow')
       
-    chebCompAccBase :: Exp Int -> Acc (Vector Double) -> Acc (Matrix Double)
-    chebCompAccBase n vec =
-      A.generate (index2 1 n) $ \(I2 j k) ->
+    chebCompAccBase :: Exp Int -> Exp Int -> Acc (Vector Double) -> Acc (Matrix Double)
+    chebCompAccBase n m vec =
+      A.generate (index2 2 ((n-1)*m+1)) $ \(I2 j k) ->
         let I1 m = shape vec in
-          cond (k A.< m)
-          (vec ! (I1 k))
-          (0)
+          cond (j A.== 0)
+          (
+            cond (k A./= 0)
+            (
+              0
+            )
+            (
+              1
+            )
+          )
+          (
+            cond (k A.< m)
+            (
+              vec ! (I1 k)
+            )
+            (0)
+          )
+          
 
     ifIterComp :: Exp Int -> Acc (Matrix Double) -> Acc (Scalar Bool)
     ifIterComp n mat =
@@ -429,11 +447,21 @@ where
       (unit (constant True))
       (unit (constant False))
 
-    genChebCompAcc :: Exp Int -> Acc (Vector Double) -> Acc (Matrix Double)
-    genChebCompAcc n vec =
+    genChebCompAcc :: Exp Int -> Exp Int -> Acc (Vector Double) -> Acc (Matrix Double)
+    genChebCompAcc n m vec =
       let n'   = n + 1
-          base = chebCompAccBase n' vec
+          m'   = m + 1
+          base = chebCompAccBase n' m' vec
       in
-        awhile (ifIter n')
+        awhile (ifIterComp n')
         (chebCompAcc n' vec)
-        (base)
+        (base) 
+    
+    composePols :: Acc (Vector Double) -> Acc (Vector Double) -> Acc (Vector Double)
+    composePols p1 p2 =
+      let I1 n = shape p1
+          I1 m = shape p2 
+          m1   = composeMat1 p1 m
+          m2   = genChebCompAcc n m p2
+      in
+      A.sum $ A.transpose $ A.zipWith (*) m1 m2
