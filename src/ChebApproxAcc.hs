@@ -73,11 +73,11 @@ where
     
     c0' :: (Exp Double -> Exp Double) -> Acc (Matrix Double) ->  Acc (Vector Double)
     c0' f nodes0 =
-        let I2 _ n = shape nodes0
+        let I2 m n = shape nodes0
         in  A.map (\x -> 1.0 / (A.fromIntegral (n))*x )
         $ A.sum
-        $ A.generate (shape nodes0) $ \(I2 j k) ->
-            f (computeChebNode n k)
+        $ A.generate (I2 m n) $ \(I2 j k) ->
+            f (computeChebNode (n-1) k)
         {- --1/(1*(A.fromIntegral(n)+1))*
         (A.sum(A.map f nodes))   -}
 
