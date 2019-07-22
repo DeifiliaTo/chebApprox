@@ -67,7 +67,7 @@ where
     sumVectors p1 p2 = zipWithPad (+) p1 p2
 
     f :: Exp Double -> Exp Double
-    f x = cos x
+    f x = sin(cos x)+ exp x
 
      -- Computes f (x_k) * cos (x_k)
     
@@ -174,7 +174,7 @@ where
     arr' = use (fromList (Z :. 5) [0..]) 
 
     res :: Acc (Vector Double)
-    res = chebf f 15
+    res = chebf f 25
 
     env :: Acc (Vector Double)
     env = envelope res
@@ -281,7 +281,7 @@ where
     chebfPrecise f = 
       let orig = chebf f 8 
       in
-        awhile (ifEnough (constant 30)) -- 30 will be changed
+        awhile (ifEnough (constant 30)) -- TODO 30 will be changed
         (
           extendChebf f  -- By defn of awhile, need function to extend (Type Acc (Vector Double) -> Acc (Vector Double))
         ) 
@@ -337,19 +337,6 @@ where
         (chebPolAcc n')
         (base)
 
-    computeVal :: Exp Double -> Exp Double -> Exp Int -> Exp Double
-    computeVal x coeff rep = 
-      coeff * (x A.^ rep)
- 
-    -- given pol and point, compute
-    evalPol :: Acc (Vector Double) -> Exp Double -> Exp Double
-    evalPol pol x = 
-      let I1 n   = shape pol
-          zipped = A.zipWith (computeVal x) pol (enumFromN (lift (Z :. (n+1))) 0)
-      in
-         the (A.fold (+) (0) zipped) -- (Exp Double)
-  
-
     samplePol :: Acc (Vector Double)
     samplePol = use (fromList (Z :. 3) [1, 0, 2]) -- 1 + x ^2
     -- if coeffs are: [1, 0, 2], I need to get vals for [-1, 0, 1, 2], then:
@@ -360,9 +347,9 @@ where
     evalOverRange :: Acc (Vector Double) ->  Acc (Vector Double)
     evalOverRange pol =
       let I1 n = shape pol
-          lst = enumFromStepN (lift (Z :. (constant 10))) (constant (-1)) (constant 0.1)        
+          lst = enumFromStepN (lift (Z :. (constant 20))) (constant (-1)) (constant 0.1)        
           repCoeff =  A.transpose $ A.replicate (lift (Z :. n :. All)) lst
-          eval = A.generate (index2 (constant 10) n) $ \(I2 j k) ->
+          eval = A.generate (index2 (constant 20) n) $ \(I2 j k) ->
             pol ! (I1 k) * 
             (repCoeff ! (I2 j k) A.^ k)
       in
@@ -370,7 +357,7 @@ where
     
     evalFunction :: (Exp Double -> Exp Double) -> Acc (Vector Double)
     evalFunction f = 
-      let lst = enumFromStepN (lift (Z :. (constant 10))) (constant (-1)) (constant 0.1)        
+      let lst = enumFromStepN (lift (Z :. (constant 20))) (constant (-1)) (constant 0.1)        
       in
         A.map f lst
     
@@ -410,13 +397,17 @@ where
       let I2 m _  = shape mat
           nextRow = pow n (m) vec
           nextRow' = A.transpose $ A.generate (index2 1 ((n-1)*m+1)) $ \(I2 j k) -> 
-            cond (k A.>= (n-1)*(m)-1) -- TODO check
+            cond (k A.>= (n-1)*(m)-1) -- TODO check dimensions
             (0)
             (nextRow ! (I1 k))
           mat' = A.transpose mat
       in
       A.transpose $ (mat' A.++ nextRow')
       
+    {-
+        Generates the first two rows (padded with zeros to the appropriate length) of Matrix req for 
+        function composition
+    -}
     chebCompAccBase :: Exp Int -> Exp Int -> Acc (Vector Double) -> Acc (Matrix Double)
     chebCompAccBase n m vec =
       A.generate (index2 2 ((n-1)*m+1)) $ \(I2 j k) ->
@@ -439,7 +430,9 @@ where
             (0)
           )
           
-
+    {-
+          If statement to see if it needs to keep generating rows
+    -}
     ifIterComp :: Exp Int -> Acc (Matrix Double) -> Acc (Scalar Bool)
     ifIterComp n mat =
       let I2 j _  = shape mat in
@@ -447,6 +440,9 @@ where
       (unit (constant True))
       (unit (constant False))
 
+    {-
+        Generate matrix2 required for composition
+    -}
     genChebCompAcc :: Exp Int -> Exp Int -> Acc (Vector Double) -> Acc (Matrix Double)
     genChebCompAcc n m vec =
       let n'   = n + 1
@@ -457,6 +453,9 @@ where
         (chebCompAcc n' vec)
         (base) 
     
+    {-
+        Function for polynomial composition
+    -}
     composePols :: Acc (Vector Double) -> Acc (Vector Double) -> Acc (Vector Double)
     composePols p1 p2 =
       let I1 n = shape p1
