@@ -12,31 +12,32 @@ where
     import qualified Prelude  as P
     import ChebApproxAcc
     
-    data Cheb = Cheb (Acc (Vector Double)) deriving (Show, Generic, IsProduct Arrays, Arrays)
+    data Cheb = Cheb (Vector Double) deriving (Show, Generic, IsProduct Arrays, Arrays)
 
-    x :: Cheb
-    x = Cheb (enumFromN 0 1)
+    x :: Acc Cheb
+    x = lift (toCheb (use (fromList (Z :. 2) [0,1])))
 
-{- 
-    cos :: Cheb -> Cheb
+ 
+    cos :: Acc Cheb -> Acc Cheb
     cos x = 
-        calcCheb (P.cos) x 8 -}
+        let cosCheb = chebf (P.cos) 8 in
+        lift (toCheb (composePols cosCheb (fromCheb x)))
 
-    sin :: Cheb -> Cheb
+    sin :: Acc Cheb -> Acc Cheb
     sin x = 
-        Cheb (chebf (P.sin) 8)
+        lift (toCheb (chebf (P.sin) 8))
 
-    sinh :: Cheb -> Cheb
+    sinh :: Acc Cheb -> Acc Cheb
     sinh x = 
-        Cheb (chebf (P.sinh) 8)
+        lift (toCheb (chebf (P.sinh) 8))
     
-    cosh :: Cheb -> Cheb
+    cosh :: Acc Cheb -> Acc Cheb
     cosh x = 
-        Cheb (chebf (P.cosh) 8)
+        lift (toCheb (chebf (P.cosh) 8))
 
-    exp :: Cheb -> Cheb
+    exp :: Acc Cheb -> Acc Cheb
     exp x = 
-        Cheb (chebf (P.exp) 8)
+        lift (toCheb (chebf (P.exp) 8))
 
     {- log :: Cheb -> Cheb
     log x = 

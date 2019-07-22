@@ -257,8 +257,7 @@ where
             pMatrix = plateauMatrix envMat rl
             summed = A.maximum $ pMatrix
             zipped = A.zipWith (*) summed (enumFromN (lift (Z:.(n+2))) 2)
-            positive = (A.filter (\x -> x A.> 0) zipped)
-            filteredPos = extract (CPU.run $ positive)
+            T2 filteredPos _ = (A.filter (\x -> x A.> 0) zipped)
         in
         A.minimum filteredPos
 
@@ -268,9 +267,22 @@ where
     ifEnough :: Exp Double -> Acc (Vector Double) -> Acc (Scalar Bool) -- Needs to be this type signature if used in awhile 
     ifEnough criteria arr =
       --let val = ( (plateauPoint arr) ! (I1 0) )in
-      acond (the (plateauPoint arr) A.> criteria) -- issues with "the" operator
-      (unit (constant True))
-      (unit (constant False))
+      let pt = the (plateauPoint arr)
+          I1 len = shape arr
+      in
+      acond 
+      (
+        pt A.> A.fromIntegral (len)
+      )
+      (
+        unit (constant False)
+      )
+      (
+        acond (pt A.> criteria)
+        (unit (constant True))
+        (unit (constant False))
+      )
+      
     
     extendChebf :: (Exp Double -> Exp Double) -> Acc (Vector Double) -> Acc (Vector Double)
     extendChebf f chebRep =
@@ -279,9 +291,9 @@ where
     
     chebfPrecise :: (Exp Double -> Exp Double) -> Acc (Vector Double)
     chebfPrecise f = 
-      let orig = chebf f 8 
+      let orig = chebf f 5 
       in
-        awhile (ifEnough (constant 30)) -- TODO 30 will be changed
+        awhile (ifEnough (constant 7)) -- TODO 30 will be changed
         (
           extendChebf f  -- By defn of awhile, need function to extend (Type Acc (Vector Double) -> Acc (Vector Double))
         ) 
