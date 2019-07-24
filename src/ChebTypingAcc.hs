@@ -67,6 +67,11 @@ where
     instance P.Num (Acc Cheb) where
         xs + ys = toCheb(sumVectors (fromCheb (xs)) (fromCheb (ys)))
         xs - ys = toCheb(sumVectors (fromCheb (xs)) (A.map (* (-1)) (fromCheb (ys))))
+        xs * ys = toCheb (multPoly (fromCheb xs) (fromCheb ys))
+        
+
+    instance (*) (Exp Double) (Acc Cheb) where
+        x * ys  = toCheb (A.map (*) x (fromCheb ys)) 
         -- xs(ys)  = composePols xs ys 
 
     instance P.Fractional (Acc Cheb) -- where
