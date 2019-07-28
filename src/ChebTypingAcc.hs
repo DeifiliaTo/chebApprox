@@ -69,9 +69,6 @@ where
         xs - ys = toCheb(sumVectors (fromCheb (xs)) (A.map (* (-1)) (fromCheb (ys))))
         xs * ys = toCheb (multPoly (fromCheb xs) (fromCheb ys))
         
-
-    instance (*) (Exp Double) (Acc Cheb) where
-        x * ys  = toCheb (A.map (*) x (fromCheb ys)) 
         -- xs(ys)  = composePols xs ys 
 
     instance P.Fractional (Acc Cheb) -- where
@@ -79,4 +76,14 @@ where
 
     instance P.Floating (Acc Cheb) where
         cos = P.id
+
+    
+
+    infixl 7 *^
+    (*^) :: Exp Double -> Acc Cheb -> Acc Cheb
+    (*^)  x ys  = toCheb (A.map (A.*x) (fromCheb ys)) 
+
+    infixl 7 ^*
+    (^*) :: Acc Cheb -> Exp Double -> Acc Cheb
+    (^*) ys x = toCheb (A.map (A.*x) (fromCheb ys)) 
 
