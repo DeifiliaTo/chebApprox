@@ -22,6 +22,9 @@ extra-deps:
 
 - git:    https://github.com/tmcdonell/lens-accelerate.git
   commit: b74eb8098735b1ad6cff3c5655af03d3f29b9f8e
+ 
+- git:    https://github.com/hspec/HUnit.git
+  commit: 691dd02c3137eed621ba042d62f35c3bb70e5b5d
 
 - cairo-0.13.6.0
 - Chart-cairo-1.9.1
