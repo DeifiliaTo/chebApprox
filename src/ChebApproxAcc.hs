@@ -356,29 +356,31 @@ where
     -- [1, 0, 2] [ 0  0  0]
     -- [1, 0, 2] [ 1  1  1]
     -- [1, 0, 2] [ 2  2  2]
-    evalOverRange :: Acc (Vector Double) ->  Acc (Vector Double)
-    evalOverRange pol =
+    evalOverRange :: Acc (Vector Double) -> Exp Int -> Acc (Vector Double)
+    evalOverRange pol numPoints =
       let I1 n = shape pol
-          lst = enumFromStepN (lift (Z :. (constant 20))) (constant (-1)) (constant 0.1)        
+          lst = enumFromStepN (lift (Z :. (numPoints))) (constant (-1)) (2.0/(A.fromIntegral(numPoints)-1))        
           repCoeff =  A.transpose $ A.replicate (lift (Z :. n :. All)) lst
-          eval = A.generate (index2 (constant 20) n) $ \(I2 j k) ->
+          eval = A.generate (index2 (numPoints) n) $ \(I2 j k) ->
             pol ! (I1 k) * 
             (repCoeff ! (I2 j k) A.^ k)
       in
         A.sum $ eval
     
-    evalFunction :: (Exp Double -> Exp Double) -> Acc (Vector Double)
-    evalFunction f = 
-      let lst = enumFromStepN (lift (Z :. (constant 20))) (constant (-1)) (constant 0.1)        
+    evalFunction :: (Exp Double -> Exp Double) -> Exp Int -> Acc (Vector Double)
+    evalFunction f numPoints = 
+      let lst = enumFromStepN (lift (Z :. (numPoints))) (constant (-1)) (2.0/(A.fromIntegral(numPoints)-1))        
       in
         A.map f lst
     
     approxError :: (Exp Double -> Exp Double) -> Acc (Vector Double) -> Acc (Vector Double)
     approxError f pol =
-      let approx = evalOverRange pol
-          real   = evalFunction f
+      let numPoints = constant (100::Int)
+          approx    = evalOverRange pol numPoints
+          real      = evalFunction f numPoints
+          width     = constant 2.0/((A.fromIntegral(numPoints)::Exp Double)-1.0)
       in
-      A.zipWith (-) real approx 
+      A.map (A.* width) (A.map (A.^(1::Exp Int))(A.map (A.abs) (A.zipWith (-) real approx )))
 
     composeMat1 :: Acc (Vector Double) -> Exp Int -> Acc (Matrix Double)
     composeMat1 pol1 m =
