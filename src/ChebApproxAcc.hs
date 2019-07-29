@@ -15,6 +15,9 @@ where
     import Data.Array.Accelerate.LLVM.Native as CPU
 
    
+    arr2 :: Acc (Vector Double)
+    arr2 = use (fromList (Z :. 3) [1, 3, 2])
+
     {- value :: Exp (Int)
     value = (constant 2)
 
@@ -27,9 +30,7 @@ where
     arr1 :: Acc (Vector Double)
     arr1 = use (fromList (Z :. 10) [0..])
 
-    arr2 :: Acc (Vector Double)
-    arr2 = use (fromList (Z :. 3) [1, 3, 2])
-
+    
     arr3 :: Acc (Vector Double)
     arr3 = use (fromList (Z :. 3) [1, 3, 2])
 
@@ -357,10 +358,10 @@ where
     -- [1, 0, 2] [ 2  2  2]
     evalOverRange :: Acc (Vector Double) -> Exp Int -> Acc (Vector Double)
     evalOverRange pol numPoints =
-      let I1 n = shape pol
-          lst = enumFromStepN (lift (Z :. (numPoints))) (constant (-1)) (2.0/(A.fromIntegral(numPoints)-1))        
+      let I1 n     = shape pol
+          lst      = enumFromStepN (lift (Z :. (numPoints))) (constant (-1)) (2.0/(A.fromIntegral(numPoints)-1))        
           repCoeff =  A.transpose $ A.replicate (lift (Z :. n :. All)) lst
-          eval = A.generate (index2 (numPoints) n) $ \(I2 j k) ->
+          eval     = A.generate (index2 (numPoints) n) $ \(I2 j k) ->
             pol ! (I1 k) * 
             (repCoeff ! (I2 j k) A.^ k)
       in
@@ -563,3 +564,21 @@ where
           )
       in
       A.transpose $ ((A.transpose $ mat) A.++ nextRow)
+
+    polToFn :: Acc (Vector Double) -> (Exp Double -> Exp Double)
+    polToFn pol = 
+      let f' x = evalPol pol x
+      in
+        f'
+
+    computeVal :: Exp Double -> Exp Double -> Exp Int -> Exp Double
+    computeVal x coeff rep = 
+      coeff * (x A.^ rep)
+ 
+    -- given pol and point, compute
+    evalPol :: Acc (Vector Double) -> Exp Double -> Exp Double
+    evalPol pol x = 
+      let I1 n   = shape pol
+          zipped = A.zipWith (computeVal x) pol (enumFromN (lift (Z :. (n+1))) 0)
+      in
+         the (A.fold (+) (0) zipped) -- (Exp Double)
