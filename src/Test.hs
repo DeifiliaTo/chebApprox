@@ -8,6 +8,7 @@ import Diagrams.Backend.CmdLine
 import qualified Data.Array.Accelerate as A
 import Data.Array.Accelerate.LLVM.Native as CPU
 import qualified Prelude as P
+import Test.HUnit
 
 
 import System.IO.Unsafe
@@ -72,5 +73,5 @@ main =
        in 
        do
               --renderableToFile def "cos-cheb" (chart "cos-cheb" ([zip [-1, -0.99..1] cheb]))
-              renderableToFile def "cos-residual" (chart "cos-residual" ([P.zip [-1, -0.9..1] residual]))
+              --renderableToFile def "cos-residual" (chart "cos-residual" ([P.zip [-1, -0.9..1] residual]))
               --renderableToFile def "cos-residual-n=20" (chart "cos-residual-n=20" ([zip [-1, -0.99..1] cheb20plot]))

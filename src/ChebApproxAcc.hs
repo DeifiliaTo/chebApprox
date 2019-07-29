@@ -512,15 +512,18 @@ where
             (an * mat ! (I2 (currRow) (j+1)) - (nPol ! (I1 (n-1-j)))*(mat ! (I2 (currRow) 0)))/an
           )
           (
-            A.cond (j - currRow +1 A.< d)
-            ((an * mat ! (I2 (currRow) (j+1)))/an)
+            --A.cond ((j - currRow +1 )A.< d)
+            A.cond ((d-j) A.< currRow)
+            
             --((an * mat ! (I2 (currRow) (j+1)) - (nPol ! (I1 (n-1-j)))*(mat ! (I2 (currRow) 0)))/an)
             (0)
+            (
+              (an * mat ! (I2 (currRow) (j+1)))/an
+            )
           )
       in
       A.transpose $ ((A.transpose $ mat) A.++ nextRow)
-      
-      
-    
+
+        
     
    
