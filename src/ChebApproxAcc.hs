@@ -478,18 +478,21 @@ where
       in
       A.sum $ A.transpose $ A.zipWith (*) m1 m2
 
-    dPol :: Acc (Vector Double)
-    dPol = use (fromList (Z :. 5) [12, 32, 27, 11, 2])
+    dPol' :: Acc (Vector Double)
+    dPol' = use (fromList (Z :. 5) [12, 32, 27, 11, 2])
 
-    nPol :: Acc (Vector Double)
-    nPol = use (fromList (Z :. 3) [2, 5, 2])
+    nPol' :: Acc (Vector Double)
+    nPol' = use (fromList (Z :. 3) [2, 5, 2])
+    
+    eps :: Exp Double
+    eps = constant 1e-10
     
     genDivBase :: Exp Int -> Exp Int -> Acc (Vector Double) -> Acc (Vector Double) -> Acc (Matrix Double)
     genDivBase d n dPol nPol =
       A.generate (index2 2 (d+1)) $ \(I2 t j) ->
         A.cond (t A.== 0) 
         (
-          A.cond (j A.<= n)
+          A.cond (A.fromIntegral(j) A.<= (A.fromIntegral (n)+eps))
           (
             nPol ! (I1 (n-j))
           )
@@ -500,30 +503,43 @@ where
         (
           dPol ! (I1 (d-j))
         )
+    
+    base' :: Acc (Matrix Double)
+    base' = genDivBase 4 2 dPol' nPol'
 
+    genDivMatrix :: Acc (Vector Double) -> Acc (Vector Double) -> Acc (Matrix Double)
+    genDivMatrix dPol nPol =
+      let an   = nPol ! (I1 0)
+          I1 n = shape nPol   -- 3
+          I1 d = shape dPol   -- 5
+          base = genDivBase (d-1) (n-1) dPol' nPol'
+      in
+        awhile (ifIterComp (d-n+3))
+        (genDivRow (d-1) (n-1) an nPol)
+        (base) 
+    
+    
+   
+        
     -- given a matrix, compute an additional row
     -- Take in the matrix computed so far, total dim of matrix, and row we are currently on
-    genDivRow :: Exp Int -> Exp Int -> Exp Double -> Acc (Vector Double) -> Exp Int -> Acc (Matrix Double) -> Acc (Matrix Double)
-    genDivRow d n an nPol currRow mat =
+    genDivRow :: Exp Int -> Exp Int -> Exp Double -> Acc (Vector Double) -> Acc (Matrix Double) -> Acc (Matrix Double)
+    genDivRow d n an nPol mat =
       let 
+        I2 currRow _ = shape mat -- 2 x something
         nextRow =  A.transpose $ A.generate (index2 1 (d+1)) $ \(I2 t j) -> 
           A.cond ((n-1-j) A.>= 0)
           (
-            (an * mat ! (I2 (currRow) (j+1)) - (nPol ! (I1 (n-1-j)))*(mat ! (I2 (currRow) 0)))/an
+            (an * mat ! (I2 (currRow -1) (j+1)) - (nPol ! (I1 (n-1-j)))*(mat ! (I2 (currRow-1) 0)))/an
           )
           (
             --A.cond ((j - currRow +1 )A.< d)
-            A.cond ((d-j) A.< currRow)
+            A.cond ((d-j) A.< currRow-1)
             
-            --((an * mat ! (I2 (currRow) (j+1)) - (nPol ! (I1 (n-1-j)))*(mat ! (I2 (currRow) 0)))/an)
             (0)
             (
-              (an * mat ! (I2 (currRow) (j+1)))/an
+              (an * mat ! (I2 (currRow-1) (j+1)))/an
             )
           )
       in
       A.transpose $ ((A.transpose $ mat) A.++ nextRow)
-
-        
-    
-   
