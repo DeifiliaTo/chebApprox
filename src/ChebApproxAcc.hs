@@ -503,9 +503,6 @@ where
         (
           dPol ! (I1 (d-j))
         )
-    
-    base' :: Acc (Matrix Double)
-    base' = genDivBase 4 2 dPol' nPol'
 
     genDivMatrix :: Acc (Vector Double) -> Acc (Vector Double) -> Acc (Matrix Double)
     genDivMatrix dPol nPol =
@@ -517,9 +514,32 @@ where
         awhile (ifIterComp (d-n+3))
         (genDivRow (d-1) (n-1) an nPol)
         (base) 
+      
+    genRemainder :: Acc (Matrix Double) -> Exp Int -> Acc (Vector Double)
+    genRemainder mat len =
+      let I2 rows _ = shape mat
+      in
+        A.generate (index1 len) $ \ (I1 j) ->
+          mat ! (I2 (rows-1) j)
     
+    genQuotient :: Acc (Matrix Double) -> Exp Int -> Acc (Vector Double) 
+    genQuotient mat len =
+      let I2 rows _ = shape mat
+          an        = mat ! (I2 0 0)
+      in
+        A.generate (index1 len) $ \ (I1 j) -> 
+          mat ! (I2 (j+1) 0) / an
+        
+    divPol :: Acc (Vector Double) -> Acc (Vector Double) -> Acc (Vector Double)
+    divPol dPol nPol =
+      let I1 n      = shape nPol
+          I1 d      = shape dPol
+          mat       = genDivMatrix dPol nPol
+          remainder = genRemainder mat (n-1) -- n-1 = degree of pol
+          quotient  = genQuotient mat (d-n+1)
+      in
+      quotient -- TODO fix
     
-   
         
     -- given a matrix, compute an additional row
     -- Take in the matrix computed so far, total dim of matrix, and row we are currently on
