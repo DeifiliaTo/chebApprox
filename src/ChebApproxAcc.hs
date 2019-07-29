@@ -13,10 +13,9 @@ where
     import Data.Array.Accelerate.Debug as A
     import Data.Array.Accelerate.Interpreter as I
     import Data.Array.Accelerate.LLVM.Native as CPU
-    import Data.Array.Accelerate.Data.Maybe
 
    
-    value :: Exp (Int)
+    {- value :: Exp (Int)
     value = (constant 2)
 
     value2 :: Exp (Int)
@@ -38,7 +37,7 @@ where
     vec0 = use (fromList (Z :. 1) [1..])
 
     vec1 :: Acc (Vector Double)
-    vec1 = use (fromList (Z :. 2) [0..])
+    vec1 = use (fromList (Z :. 2) [0..]) -}
 
     -- Returns value of chebyshev zero
     computeChebNode :: Exp (Int) -> Exp (Int) -> Exp (Double)
@@ -58,7 +57,7 @@ where
             I1 m = shape bs
             maxlen = A.max n m
             as' = as A.++ fill (index1 (maxlen-n)) 0
-            bs' = bs A.++ fill (index1 (maxlen-n)) 0
+            bs' = bs A.++ fill (index1 (maxlen-m)) 0 
         in  
         A.zipWith f as' bs'
     
@@ -478,3 +477,50 @@ where
           m2   = genChebCompAcc n m p2
       in
       A.sum $ A.transpose $ A.zipWith (*) m1 m2
+
+    dPol :: Acc (Vector Double)
+    dPol = use (fromList (Z :. 5) [12, 32, 27, 11, 2])
+
+    nPol :: Acc (Vector Double)
+    nPol = use (fromList (Z :. 3) [2, 5, 2])
+    
+    genDivBase :: Exp Int -> Exp Int -> Acc (Vector Double) -> Acc (Vector Double) -> Acc (Matrix Double)
+    genDivBase d n dPol nPol =
+      A.generate (index2 2 (d+1)) $ \(I2 t j) ->
+        A.cond (t A.== 0) 
+        (
+          A.cond (j A.<= n)
+          (
+            nPol ! (I1 (n-j))
+          )
+          (
+            0
+          )
+        ) 
+        (
+          dPol ! (I1 (d-j))
+        )
+
+    -- given a matrix, compute an additional row
+    -- Take in the matrix computed so far, total dim of matrix, and row we are currently on
+    genDivRow :: Exp Int -> Exp Int -> Exp Double -> Acc (Vector Double) -> Exp Int -> Acc (Matrix Double) -> Acc (Matrix Double)
+    genDivRow d n an nPol currRow mat =
+      let 
+        nextRow =  A.transpose $ A.generate (index2 1 (d+1)) $ \(I2 t j) -> 
+          A.cond ((n-1-j) A.>= 0)
+          (
+            (an * mat ! (I2 (currRow) (j+1)) - (nPol ! (I1 (n-1-j)))*(mat ! (I2 (currRow) 0)))/an
+          )
+          (
+            A.cond (j - currRow +1 A.< d)
+            ((an * mat ! (I2 (currRow) (j+1)))/an)
+            --((an * mat ! (I2 (currRow) (j+1)) - (nPol ! (I1 (n-1-j)))*(mat ! (I2 (currRow) 0)))/an)
+            (0)
+          )
+      in
+      A.transpose $ ((A.transpose $ mat) A.++ nextRow)
+      
+      
+    
+    
+   
