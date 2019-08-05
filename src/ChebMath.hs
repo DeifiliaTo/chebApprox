@@ -14,6 +14,7 @@ where
     import Data.Array.Accelerate.Interpreter as I
     import Data.Array.Accelerate.LLVM.Native as CPU
     import Data.Array.Accelerate.Data.Maybe
+    import qualified Data.Vector as V
 
 
     computeVal :: Exp Double -> Exp Double -> Exp Int -> Exp Double
@@ -51,3 +52,14 @@ where
         in
             rightCalc - leftCalc      
     
+    vec :: V.Vector (Double)       --  need V.Vector in order to specify the type (normal vector and not acc)
+    vec = V.fromList [1, 2, 4]      -- V.length = 3
+     
+
+    aux :: (Double -> Double) -> Double -> (Double, Double) -> [(Double, Double)] -> [(Double, Double)]
+    aux f h (xl, xr) acc =
+        if (xl P.> xr) then acc
+        else 
+            if ((f xl) * (f (xl + h)) P.< 0)
+                then aux f h ((xl +h), xr) ((xl, (xl+h)):acc)
+                else aux f h ((xl +h), xr) acc

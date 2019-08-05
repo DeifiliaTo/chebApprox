@@ -1,12 +1,14 @@
-module ChebyshevApproximations (chebf, envelope, plateau, fnComposition, newtonApprox, sumVectors, multPoly)
+module ChebyshevApproximations (chebf, envelope, plateau, fnComposition, newtonApprox, sumVectors, multPoly, polCalc, printErrLag)
 where
-    import Prelude 
-    
+    import Prelude
   
+    f :: Double -> Double
+    f x = cos x
+
     -- Returns value of chebyshev zero
     computeChebNode :: (Floating a, Integral b) => b -> b -> a
     computeChebNode n k = 
-        cos ((2*fromIntegral(n)+1-2*fromIntegral(k))*pi/(2*fromIntegral(n)+2))
+        cos ((2*fromIntegral(n)+1-2*fromIntegral(k))*pi /(2*fromIntegral(n)+2))
 
     -- Creates list of chebyshev zeros
     chebNodes :: (Floating a, Integral b) => b -> [a]
@@ -14,7 +16,6 @@ where
         let nodes = [0..n] in
             map (\x -> computeChebNode n x) (nodes)
 
-    -- Takes in an order. Returns list of chebyshev polynomials
     -- Takes in an order. Returns list of chebyshev polynomials
     chebPol :: (Floating a, Integral b) => b -> [[a]]
     chebPol 0 = [[1.0]]
@@ -60,10 +61,7 @@ where
         else sumVectors p2 p1
 
 
-    -- takes in list of coefficients, and cheb polynomials, outputs polynomial approximation
-    -- Used for c_j * T_j
-
-
+    -- Given a function f, and degree n, calculates chebyshev approximation
     chebf :: (Floating a, Integral b) => (a -> a) -> b -> [a]
     chebf f n =
         let coeffs = chebCoeff f n n
@@ -72,6 +70,8 @@ where
             mapped = map (\(x, y) -> map (*x) y) zipped
             in foldl (\x y -> sumVectors x y) [] mapped
 
+    -- takes in list of coefficients, and cheb polynomials, outputs polynomial approximation
+    -- Used for c_j * T_j
     polCalc :: (Floating a, Eq a, Integral b) => [a] -> a -> b -> a
     polCalc (c:coeffs) x order =
         if coeffs == [] then
@@ -80,14 +80,7 @@ where
             c * x^order + polCalc coeffs x (order + 1)
 
 
-
-    -- Example functions
-
-
-    h :: Double -> Double
-    h x = sin x + exp (cos x) - x*x*x
-
-
+    -- (3 functions for) Division
     -- Newtonian approach
     findDiff :: (Floating a, Integral b) => a -> a -> b -> a
     findDiff x y  order = (y-x)/fromIntegral(order)
@@ -131,9 +124,6 @@ where
     polMultFoldable lst =
         [1]:scanl1 (\x y -> multPoly x y) lst
 
-    fn :: Double -> Double
-    fn x = 2**x
-
     newtonApprox :: (Floating a, Integral b, Eq a, Enum a) => (a -> a) -> b -> [a]
     newtonApprox f n =
         --let newtonNodes = chebNodes n
@@ -143,6 +133,7 @@ where
             mapped = map (\(x, y) -> map (*x) y) pairedList
             in foldl (\x y -> sumVectors x y) [] mapped
 
+    -- Prints errors. Used for testing results.
     printErrLag :: (Floating a, Integral b, Eq a, Enum a) => (a -> a) -> b -> [a]
     printErrLag f order =
         let soln = chebf f order in
@@ -166,8 +157,7 @@ where
         else
         sumVectors (map (*(-coeff)) g) f
 
-    f :: [Double]
-    f = [2, 3, 1]
+    
     g :: [Double]  
     g = [1, -1]
 
@@ -224,4 +214,4 @@ where
     extractEnv lst = map (\x -> fst x) lst
     -- findIndex :: (Floating a, Eq a) => [a] -> Int
     --findIndex coeffs =
-    --  toIntplateau (envelope coeffs [0..(length coeffs -1)]) 0 (length coeffs)
+    --  toIntplateau (envelope coeff    

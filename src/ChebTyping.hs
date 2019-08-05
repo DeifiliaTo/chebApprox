@@ -17,7 +17,7 @@ where
             env = envelope (map abs fnRep) [0..length (fnRep)]
         in
             if (plateau env 2 (length env)) >= (length(env) Prelude.-1) then
-                if n > 100 then Cheb (fnComposition fnRep (fromCheb x))
+                if n > 200 then Cheb (fnComposition fnRep (fromCheb x))
                 else
                     calcCheb f x (n Prelude.* 2)
             else
@@ -74,8 +74,7 @@ where
     instance (Num Cheb) where
         (Cheb a) + (Cheb b) =
             let sum = (sumVectors a b) in
-                cutOffCheb sum
-      
+                cutOffCheb sum  
         (Cheb x) - (Cheb y) = 
             let diff = (sumVectors x (map (Prelude.*(-1)) y)) in
                 cutOffCheb diff

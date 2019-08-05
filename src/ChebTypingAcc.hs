@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveAnyClass  #-}
 {-# LANGUAGE DeriveGeneric   #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module ChebTypingAcc
 where
@@ -11,6 +12,7 @@ where
     import Data.Array.Accelerate.LLVM.Native as CPU
     import qualified Prelude  as P
     import ChebApproxAcc
+    import qualified Data.Vector as V
     
     data Cheb = Cheb (Vector Double) deriving (Show, Generic, IsProduct Arrays, Arrays)
 
@@ -25,19 +27,23 @@ where
 
     sin :: Acc Cheb -> Acc Cheb
     sin x = 
-        lift (toCheb (chebf (P.sin) 8))
+        let sinCheb = chebf (P.sin) 8 in
+        lift (toCheb (composePols sinCheb (fromCheb x)))
 
     sinh :: Acc Cheb -> Acc Cheb
     sinh x = 
-        lift (toCheb (chebf (P.sinh) 8))
+        let sinhCheb = chebf (P.sinh) 8 in
+        lift (toCheb (composePols sinhCheb (fromCheb x)))
     
     cosh :: Acc Cheb -> Acc Cheb
     cosh x = 
-        lift (toCheb (chebf (P.cosh) 8))
+        let coshCheb = chebf (P.cosh) 8 in
+        lift (toCheb (composePols coshCheb (fromCheb x)))
 
     exp :: Acc Cheb -> Acc Cheb
     exp x = 
-        lift (toCheb (chebf (P.exp) 8))
+        let expCheb = chebf (P.exp) 8 in
+        lift (toCheb (composePols expCheb (fromCheb x)))
 
     {- log :: Cheb -> Cheb
     log x = 
@@ -71,13 +77,21 @@ where
         
         -- xs(ys)  = composePols xs ys 
 
-    instance P.Fractional (Acc Cheb) -- where
-        -- (/) = error "sadness"
+    instance P.Fractional (Acc Cheb) where
+        xs / ys = 
+            let div       = divPol (fromCheb xs) (fromCheb ys)
+                quotient  = A.afst div
+                remainder = A.asnd div
+                num'      = polToFn (V.fromList (CPU.run $ remainder))
+                denom'    = polToFn (unlift $ (fromCheb ys))
+                g (x::Exp Double)       = (num' (x::Exp Double))/(denom' (x::Exp Double))
+                result    = chebfPrecise g
+            in (toCheb result) + (toCheb quotient)
 
     instance P.Floating (Acc Cheb) where
         cos = P.id
 
-    
+    --formFunction :: 
 
     infixl 7 *^
     (*^) :: Exp Double -> Acc Cheb -> Acc Cheb
@@ -87,3 +101,10 @@ where
     (^*) :: Acc Cheb -> Exp Double -> Acc Cheb
     (^*) ys x = toCheb (A.map (A.*x) (fromCheb ys)) 
 
+    infixl 7 */
+    (*/) :: Exp Double -> Acc Cheb -> Acc Cheb
+    (*/)  x ys  = toCheb (A.map (A./x) (fromCheb ys)) 
+
+    infixl 7 /*
+    (/*) :: Acc Cheb -> Exp Double -> Acc Cheb
+    (/*) ys x = toCheb (A.map (A./x) (fromCheb ys)) 

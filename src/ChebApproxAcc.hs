@@ -5,6 +5,7 @@
 {-# LANGUAGE DeriveAnyClass  #-}
 {-# LANGUAGE DeriveGeneric   #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module  ChebApproxAcc
 where
@@ -13,10 +14,16 @@ where
     import Data.Array.Accelerate.Debug as A
     import Data.Array.Accelerate.Interpreter as I
     import Data.Array.Accelerate.LLVM.Native as CPU
+    import qualified ChebyshevApproximations as C
+    import qualified Data.Vector as V
 
+    import Control.Exception
+    import Formatting
+    import Formatting.Clock
+    import System.Clock
    
-    arr2 :: Acc (Vector Double)
-    arr2 = use (fromList (Z :. 3) [1, 3, 2])
+    {- arr2 :: Acc (Vector Double)
+    arr2 = use (fromList (Z :. 3) [1, 3, 2]) -}
 
     {- value :: Exp (Int)
     value = (constant 2)
@@ -67,7 +74,10 @@ where
     sumVectors p1 p2 = zipWithPad (+) p1 p2
 
     f :: Exp Double -> Exp Double
-    f x = sin(cos x)+ exp x
+    f x = sin(x)
+
+    g :: Exp Double -> Exp Double
+    g x = sin(x) + sin (x*x)
 
      -- Computes f (x_k) * cos (x_k)
     
@@ -380,7 +390,7 @@ where
           real      = evalFunction f numPoints
           width     = constant 2.0/((A.fromIntegral(numPoints)::Exp Double)-1.0)
       in
-      A.map (A.* width) (A.map (A.^(1::Exp Int))(A.map (A.abs) (A.zipWith (-) real approx )))
+      A.map (A.* width) (A.map (A.^(2::Exp Int))(A.map (A.abs) (A.zipWith (-) real approx )))
 
     composeMat1 :: Acc (Vector Double) -> Exp Int -> Acc (Matrix Double)
     composeMat1 pol1 m =
@@ -531,7 +541,7 @@ where
         A.generate (index1 len) $ \ (I1 j) -> 
           mat ! (I2 (j+1) 0) / an
         
-    divPol :: Acc (Vector Double) -> Acc (Vector Double) -> Acc (Vector Double)
+    divPol :: Acc (Vector Double) -> Acc (Vector Double) -> Acc ((Vector Double), (Vector Double))
     divPol dPol nPol =
       let I1 n      = shape nPol
           I1 d      = shape dPol
@@ -539,7 +549,7 @@ where
           remainder = genRemainder mat (n-1) -- n-1 = degree of pol
           quotient  = genQuotient mat (d-n+1)
       in
-      quotient -- TODO fix
+      lift (quotient, remainder)
     
         
     -- given a matrix, compute an additional row
@@ -564,21 +574,47 @@ where
           )
       in
       A.transpose $ ((A.transpose $ mat) A.++ nextRow)
+    
+    clockSomething :: a -> IO ()
+    clockSomething something =
+      do 
+        start <- getTime Monotonic
+        evaluate (something)
+        end <- getTime Monotonic
+        fprint (timeSpecs % "\n") start end
 
-    polToFn :: Acc (Vector Double) -> (Exp Double -> Exp Double)
-    polToFn pol = 
-      let f' x = evalPol pol x
+      {- let start = getTime Monotonic 
+          res   = chebf f 1000
+          end   = getTime Monotonic
       in
-        f'
+        fprint (timeSpecs % "\n") start end -}
+      
+      {-  do
+      start <- getTime Monotonic
+      let res = chebf f 1000
+      in
+      end <- getTime Monotonic
+      fprint (timeSpecs % "\n") start end -}
+    
+    {-
+        Takes a polynomial and converts it to a function. 
+    -}
+    polToFn :: (V.Vector Double) -> (Exp Double -> Exp Double)
+    polToFn pol = 
+      let f' (x::Exp Double) = evalPol' pol x
+      in
+        f' 
 
-    computeVal :: Exp Double -> Exp Double -> Exp Int -> Exp Double
-    computeVal x coeff rep = 
-      coeff * (x A.^ rep)
+    computeVal' :: Double -> Double -> Int -> Double
+    computeVal' x coeff rep = 
+      coeff * (x P.^ rep)
  
     -- given pol and point, compute
-    evalPol :: Acc (Vector Double) -> Exp Double -> Exp Double
-    evalPol pol x = 
-      let I1 n   = shape pol
-          zipped = A.zipWith (computeVal x) pol (enumFromN (lift (Z :. (n+1))) 0)
+    evalPol' :: (V.Vector Double) -> Double -> Exp Double
+    evalPol' pol x = 
+      let n      = V.length pol
+          zipped = V.zipWith (computeVal' x) pol (V.enumFromN (0) (n+1)) -- 0 is starting point, n+1 is number of digits. Check to see if should be only up to n.
       in
-         the (A.fold (+) (0) zipped) -- (Exp Double)
+         constant (P.foldl (+) (0) zipped) -- (Exp Double)    
+    
+    fn' x = 1 + 2*x + 4*x*x
