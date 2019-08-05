@@ -63,3 +63,22 @@ where
             if ((f xl) * (f (xl + h)) P.< 0)
                 then aux f h ((xl +h), xr) ((xl, (xl+h)):acc)
                 else aux f h ((xl +h), xr) acc
+
+        -- Bisection
+    absFloat :: Float -> Float
+    absFloat x = if (x < 0.0) then (-1.0*x) else x
+                
+    close :: Float -> Bool
+    close x = (absFloat x) < 0.0001 
+                
+    -- Function definition: expect a function f x that goes from fl -> float, 
+    -- will output another float
+    bisection :: (Float -> Float)-> Float -> Float -> Float
+    bisection f xl xr = 
+     let mid = (xl + xr)/2.0 in
+     let f_mid = f mid in
+      if close f_mid then mid
+      	else
+      		if f_mid < 0.0 then bisection f mid xr
+      			else bisection f xl mid
+        

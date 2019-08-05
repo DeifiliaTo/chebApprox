@@ -582,19 +582,6 @@ where
         evaluate (something)
         end <- getTime Monotonic
         fprint (timeSpecs % "\n") start end
-
-      {- let start = getTime Monotonic 
-          res   = chebf f 1000
-          end   = getTime Monotonic
-      in
-        fprint (timeSpecs % "\n") start end -}
-      
-      {-  do
-      start <- getTime Monotonic
-      let res = chebf f 1000
-      in
-      end <- getTime Monotonic
-      fprint (timeSpecs % "\n") start end -}
     
     {-
         Takes a polynomial and converts it to a function. 
