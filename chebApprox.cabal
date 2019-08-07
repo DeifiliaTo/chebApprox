@@ -15,26 +15,26 @@ library
   exposed-modules:     ChebApproxAcc, ChebTypingAcc, ChebMath, HedgehogTest
   hs-source-dirs:      src
   build-depends:       base >=4.12 && <4.13,
-		       accelerate,
-		       accelerate-llvm-native,
-		       hedgehog,
+                       accelerate,
+                       accelerate-llvm-native,
+                       hedgehog,
                        tasty-hedgehog,
-	               tasty,
-	        	clock,
-		       formatting,
-		       vector
+                       tasty,
+                        clock,
+                       formatting,
+                       vector
   default-language:    Haskell2010
 
 executable test
   main-is:             Test.hs
   hs-source-dirs:      test
   build-depends:       base >=4.12 && <4.13,
-		                   HUnit,
+                                   HUnit,
                        accelerate,
                        accelerate-fft,
                        accelerate-llvm-native,
-		                   chebApprox,
-		                   lens-accelerate,
+                       chebApprox,
+                       lens-accelerate,
                        diagrams-lib,
                        diagrams-cairo,
                        Chart,
