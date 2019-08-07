@@ -26,6 +26,12 @@ extra-deps:
 - git:    https://github.com/hspec/HUnit.git
   commit: 691dd02c3137eed621ba042d62f35c3bb70e5b5d
 
+- git:    https://github.com/corsis/clock.git
+  commit: 98ff9a0d9aa61382dc8dcda5f74943f5f0029e1a
+
+- git:    https://github.com/chrisdone/formatting.git
+  commit: 5baf3b5caa7bc0b51178dedf96d3afbda40c8d99
+
 - cairo-0.13.6.0
 - Chart-cairo-1.9.1
 - cuda-0.10.1.0
