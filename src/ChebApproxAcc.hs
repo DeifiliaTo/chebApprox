@@ -586,7 +586,7 @@ where
     {-
         Takes a polynomial and converts it to a function. 
     -}
-    polToFn :: (V.Vector Double) -> (Exp Double -> Exp Double)
+  {-   polToFn :: (V.Vector Double) -> (Exp Double -> Exp Double)
     polToFn pol = 
       let f' (x::Exp Double) = evalPol' pol x
       in
@@ -604,4 +604,24 @@ where
       in
          constant (P.foldl (+) (0) zipped) -- (Exp Double)    
     
-    fn' x = 1 + 2*x + 4*x*x
+    fn' x = 1 + 2*x + 4*x*x -}
+    polToFn :: Acc (Vector Double) -> (Exp Double -> Acc (Scalar Double))--(Exp Double -> Exp Double)
+    polToFn pol = 
+      let f' (x::Exp Double) = evalPol pol x
+      in
+        f'
+
+    --computeVal :: Exp Double -> Exp Double -> Exp Int -> Exp Double
+    computeVal :: Exp Double -> Exp Double -> Exp Int -> Exp Double
+    computeVal x coeff rep = 
+      coeff * (x A.^ rep)
+ 
+    -- given pol and point, compute
+    evalPol :: Acc (Vector Double) -> Exp Double -> Acc (Scalar Double)
+    evalPol pol x = 
+      let I1 n   = shape pol
+          zipped = A.zipWith (computeVal x) pol (enumFromN (lift (Z :. (n+1))) 0)
+      in
+         (A.fold (+) (0) zipped) -- (Exp Double)
+    
+  
