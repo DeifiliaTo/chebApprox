@@ -3,9 +3,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators       #-}
 {-# LANGUAGE BangPatterns        #-}
-{-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE DeriveDataTypeable  #-}
+{-# LANGUAGE FlexibleContexts    #-}
 
 
 module  HedgehogTest
@@ -24,10 +24,6 @@ where
   import Test.Tasty
   import Test.Tasty.Hedgehog
   import Data.Typeable
-
-  
-
-
 
 
   type Run  = forall a. Arrays a => Acc a -> a
@@ -140,4 +136,4 @@ where
 
   fullrange :: P.RealFloat e => (Range e -> Gen e) -> Gen e
   fullrange gen = gen (Range.linearFracFrom 0 (-flt_max) flt_max)
-      
+       
